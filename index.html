@@ -514,13 +514,13 @@
 
         const UNITS = [
             { 
-                id: 'knight', name: 'Knight', icon: '🗡️', cost: 3, 
-                hp: 20, atk: 4, walkSpeed: 2, attackSpeed: 1.2, range: 1, 
-                targets: 'both', layer: 'ground' 
+                id: 'barbarian', name: 'Barbarian', icon: '🪓', cost: 5, 
+                hp: 1310, atk: 375, walkSpeed: 2, attackSpeed: 0.77, range: 1, 
+                targets: 'ground', layer: 'ground' 
             },
             { 
                 id: 'archer', name: 'Archer', icon: '🏹', cost: 3, 
-                hp: 12, atk: 6, walkSpeed: 1.5, attackSpeed: 1.5, range: 4, 
+                hp: 238, atk: 78, walkSpeed: 2, attackSpeed: 1.11, range: 5, 
                 targets: 'both', layer: 'ground' 
             },
             { 
@@ -1089,9 +1089,15 @@
                         currentBattleLog.push('🤝 Draw! No damage dealt.');
                     }
 
-                    // Update surviving units back to gameState
-                    gameState.player1.board = p1Units.filter(u => u.currentHp > 0);
-                    gameState.player2.board = p2Units.filter(u => u.currentHp > 0);
+                    // Update surviving units back to gameState and restore HP
+                    gameState.player1.board = p1Units.filter(u => u.currentHp > 0).map(u => ({
+                        ...u,
+                        currentHp: u.hp // Restore to full HP
+                    }));
+                    gameState.player2.board = p2Units.filter(u => u.currentHp > 0).map(u => ({
+                        ...u,
+                        currentHp: u.hp // Restore to full HP
+                    }));
                     gameState.battleLog = currentBattleLog;
 
                     if (gameState.player1.health <= 0 || gameState.player2.health <= 0) {
