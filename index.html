@@ -148,15 +148,16 @@
 
         .board {
             display: grid;
-            grid-template-columns: repeat(5, 80px);
-            gap: 10px;
+            grid-template-columns: repeat(4, 70px);
+            grid-template-rows: repeat(8, 70px);
+            gap: 8px;
             margin: 20px auto;
             justify-content: center;
         }
 
         .cell {
-            width: 80px;
-            height: 80px;
+            width: 70px;
+            height: 70px;
             background: #ecf0f1;
             border: 3px solid #bdc3c7;
             border-radius: 10px;
@@ -167,6 +168,16 @@
             cursor: pointer;
             transition: all 0.3s;
             position: relative;
+        }
+
+        .cell.player1-zone {
+            background: #d4e6f1;
+            border-color: #3498db;
+        }
+
+        .cell.player2-zone {
+            background: #fadbd8;
+            border-color: #e74c3c;
         }
 
         .cell:hover {
@@ -182,6 +193,16 @@
         .cell.enemy {
             background: #e74c3c;
             border-color: #c0392b;
+        }
+
+        .cell.disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        .cell.disabled:hover {
+            transform: none;
+            border-color: #bdc3c7;
         }
 
         .unit {
@@ -579,12 +600,33 @@
             const board = document.getElementById('board');
             board.innerHTML = '';
             
-            for (let i = 0; i < 10; i++) {
+            // 4x8 board = 32 cells
+            // Player 1 controls cells 0-15 (first 4 rows)
+            // Player 2 controls cells 16-31 (last 4 rows)
+            for (let i = 0; i < 32; i++) {
                 const cell = document.createElement('div');
                 cell.className = 'cell';
                 cell.dataset.index = i;
+                
+                // Add zone indicators
+                if (i < 16) {
+                    cell.classList.add('player1-zone');
+                } else {
+                    cell.classList.add('player2-zone');
+                }
+                
                 cell.onclick = () => placeUnit(i);
                 board.appendChild(cell);
+            }
+        }
+
+        function canPlaceInCell(cellIndex) {
+            // Player 1 can only place in cells 0-15
+            // Player 2 can only place in cells 16-31
+            if (playerNumber === 1) {
+                return cellIndex < 16;
+            } else {
+                return cellIndex >= 16;
             }
         }
 
@@ -626,6 +668,12 @@
             const myGold = gameState[myKey].gold;
             const myBoard = gameState[myKey].board;
             const cap = getTroopCap(gameState.round);
+
+            // Check if player can place in this cell
+            if (!canPlaceInCell(index)) {
+                alert('You can only place units in your half of the map!');
+                return;
+            }
 
             if (myBoard.length >= cap) {
                 alert(`Troop cap reached! Maximum ${cap} troops this round.`);
@@ -870,8 +918,20 @@
         function updateBoard() {
             const cells = document.querySelectorAll('#board .cell');
             cells.forEach((cell, i) => {
-                cell.className = 'cell';
+                // Reset cell classes
+                if (i < 16) {
+                    cell.className = 'cell player1-zone';
+                } else {
+                    cell.className = 'cell player2-zone';
+                }
                 cell.innerHTML = '';
+
+                // Disable cells in opponent's zone during prep phase
+                if (gameState.phase === 'prep') {
+                    if (!canPlaceInCell(i)) {
+                        cell.classList.add('disabled');
+                    }
+                }
 
                 const myKey = 'player' + playerNumber;
                 const opponentKey = playerNumber === 1 ? 'player2' : 'player1';
@@ -881,13 +941,15 @@
 
                 if (myUnit) {
                     cell.classList.add('occupied');
+                    cell.classList.remove('player1-zone', 'player2-zone', 'disabled');
                     cell.innerHTML = `
                         <div class="unit">${myUnit.icon}</div>
                         <div class="unit-name">${myUnit.name}</div>
                         <div class="unit-hp">HP: ${myUnit.currentHp}/${myUnit.hp}</div>
                     `;
-                } else if (opponentUnit && gameState.phase === 'battle') {
+                } else if (opponentUnit) {
                     cell.classList.add('enemy');
+                    cell.classList.remove('player1-zone', 'player2-zone', 'disabled');
                     cell.innerHTML = `
                         <div class="unit">${opponentUnit.icon}</div>
                         <div class="unit-name">${opponentUnit.name}</div>
