@@ -33,53 +33,56 @@
         h1 {
             text-align: center;
             color: #667eea;
-            margin-bottom: 20px;
+            margin-bottom: 30px;
             text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+            font-size: 32px;
         }
 
-        #config-screen, #lobby-screen, #game-screen, #replay-screen {
+        .screen {
             display: none;
         }
 
         .screen.active {
-            display: block;
+            display: block !important;
         }
 
         .input-group {
-            margin: 20px 0;
+            margin: 30px auto;
+            max-width: 400px;
         }
 
         label {
             display: block;
-            margin-bottom: 5px;
+            margin-bottom: 10px;
             font-weight: bold;
             color: #333;
+            font-size: 18px;
         }
 
-        input, textarea {
+        input {
             width: 100%;
-            padding: 10px;
+            padding: 15px;
             border: 2px solid #667eea;
             border-radius: 8px;
-            font-size: 14px;
+            font-size: 16px;
         }
 
-        textarea {
-            height: 150px;
-            font-family: monospace;
+        .btn-container {
+            text-align: center;
+            margin-top: 30px;
         }
 
         button {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
             border: none;
-            padding: 12px 30px;
-            border-radius: 8px;
-            font-size: 16px;
+            padding: 20px 60px;
+            border-radius: 12px;
+            font-size: 24px;
             font-weight: bold;
             cursor: pointer;
             transition: transform 0.2s;
-            margin: 5px;
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
         }
 
         button:hover {
@@ -90,6 +93,12 @@
             opacity: 0.5;
             cursor: not-allowed;
             transform: none;
+        }
+
+        .small-btn {
+            padding: 12px 30px;
+            font-size: 16px;
+            margin: 5px;
         }
 
         .game-info {
@@ -279,14 +288,6 @@
             padding: 3px 0;
         }
 
-        .damage {
-            color: #e74c3c;
-        }
-
-        .heal {
-            color: #2ecc71;
-        }
-
         #matchmaking-status {
             text-align: center;
             padding: 20px;
@@ -307,11 +308,11 @@
             100% { transform: rotate(360deg); }
         }
 
-        .replay-controls {
-            display: flex;
-            justify-content: center;
-            gap: 10px;
-            margin-top: 20px;
+        .info-text {
+            text-align: center;
+            color: #7f8c8d;
+            margin-top: 15px;
+            font-size: 14px;
         }
     </style>
 </head>
@@ -319,28 +320,30 @@
     <div class="container">
         <h1>⚔️ AutoChess Battle Arena</h1>
 
-        <div id="config-screen" class="screen active">
+        <!-- START SCREEN -->
+        <div id="start-screen" class="screen active">
             <div class="input-group">
-                <label>Firebase Configuration (JSON):</label>
-                <textarea id="firebase-config" placeholder='{"apiKey": "AIzaSyCvLSW4EvEFKlIamsL3lBV3GeDAtkvhhTo", "authDomain": "tuffmangophonk-fb5bc.firebaseapp.com", "projectId": "tuffmangophonk-fb5bc", "storageBucket": "tuffmangophonk-fb5bc.firebasestorage.app", "messagingSenderId": "199500063543", "appId": "1:199500063543:web:0c91b7db5c4910b5a5b0b2"}'></textarea>
+                <label>Enter Your Player Name:</label>
+                <input type="text" id="player-name" placeholder="Enter your name" value="Player1">
             </div>
-            <div class="input-group">
-                <label>Your Name:</label>
-                <input type="text" id="player-name" placeholder="Enter your name">
+            <div class="btn-container">
+                <button onclick="startGame()">🎮 START GAME</button>
             </div>
-            <div style="text-align: center;">
-                <button onclick="initializeFirebase()">Connect to Game</button>
-            </div>
+            <p class="info-text">Firebase is pre-configured! Just enter your name and play.</p>
+            <p class="info-text">Open in 2 tabs to test multiplayer!</p>
         </div>
 
+        <!-- LOBBY SCREEN -->
         <div id="lobby-screen" class="screen">
             <div id="matchmaking-status">
-                <h2>Finding Opponent...</h2>
+                <h2>🔍 Finding Opponent...</h2>
                 <div class="spinner"></div>
                 <p>Waiting for another player to join...</p>
+                <p class="info-text">Open this game in another tab/browser to test!</p>
             </div>
         </div>
 
+        <!-- GAME SCREEN -->
         <div id="game-screen" class="screen">
             <div class="phase-indicator" id="phase-indicator">Preparation Phase</div>
             
@@ -372,19 +375,20 @@
             </div>
 
             <div class="actions">
-                <button id="ready-btn" onclick="readyForBattle()">Ready for Battle!</button>
+                <button id="ready-btn" class="small-btn" onclick="readyForBattle()">✅ Ready for Battle!</button>
             </div>
 
             <div class="battle-log" id="battle-log" style="display: none;"></div>
         </div>
 
+        <!-- REPLAY SCREEN -->
         <div id="replay-screen" class="screen">
-            <h2 style="text-align: center; margin-bottom: 20px;">Battle Replay</h2>
+            <h2 style="text-align: center; margin-bottom: 20px;">⚔️ Battle Replay</h2>
             <div class="board" id="replay-board"></div>
             <div class="battle-log" id="replay-log"></div>
-            <div class="replay-controls">
-                <button onclick="replayBattle()">▶️ Replay Battle</button>
-                <button onclick="nextRound()">➡️ Next Round</button>
+            <div class="actions">
+                <button class="small-btn" onclick="replayBattle()">▶️ Replay Battle</button>
+                <button class="small-btn" onclick="nextRound()">➡️ Next Round</button>
             </div>
         </div>
     </div>
@@ -419,23 +423,30 @@
             document.getElementById(screenId).classList.add('active');
         }
 
-        function initializeFirebase() {
-            const configText = document.getElementById('firebase-config').value.trim();
+        function startGame() {
             const playerName = document.getElementById('player-name').value.trim();
 
-            if (!configText || !playerName) {
-                alert('Please enter both Firebase config and your name!');
+            if (!playerName) {
+                alert('Please enter your name!');
                 return;
             }
 
             try {
-                const config = JSON.parse(configText);
+                const config = {
+                    apiKey: "AIzaSyCvLSW4EvEFKlIamsL3lBV3GeDAtkvhhTo",
+                    authDomain: "tuffmangophonk-fb5bc.firebaseapp.com",
+                    projectId: "tuffmangophonk-fb5bc",
+                    storageBucket: "tuffmangophonk-fb5bc.firebasestorage.app",
+                    messagingSenderId: "199500063543",
+                    appId: "1:199500063543:web:0c91b7db5c4910b5a5b0b2"
+                };
+                
                 firebase.initializeApp(config);
                 db = firebase.firestore();
                 playerId = playerName + '_' + Date.now();
                 findMatch();
             } catch (e) {
-                alert('Invalid Firebase configuration: ' + e.message);
+                alert('Error connecting: ' + e.message);
             }
         }
 
@@ -478,6 +489,12 @@
                 
                 if (data.status === 'active' && data.state) {
                     gameState = data.state;
+                    
+                    document.getElementById('player1-name').textContent = 
+                        playerNumber === 1 ? 'You' : data.player1Name;
+                    document.getElementById('player2-name').textContent = 
+                        playerNumber === 2 ? 'You' : data.player2Name;
+                    
                     updateGameUI();
                     showScreen('game-screen');
                 }
