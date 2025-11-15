@@ -402,45 +402,69 @@ const firebaseConfig = {
             showScreen('matchmaking');
 
             try {
+                // Small random delay to reduce race conditions
+                await new Promise(resolve => setTimeout(resolve, Math.random() * 500));
+
                 const gamesRef = collection(db, 'games');
                 const q = query(gamesRef, where('status', '==', 'waiting'));
                 const snapshot = await getDocs(q);
 
                 if (!snapshot.empty) {
-                    // Join existing game
+                    // Try to join existing game
                     const gameDoc = snapshot.docs[0];
-                    gameId = gameDoc.id;
-                    await updateDoc(doc(db, 'games', gameId), {
-                        player2: playerId,
-                        status: 'playing'
-                    });
-                    playerSide = 'top';
-                    startGame();
-                } else {
-                    // Create new game
-                    const docRef = await addDoc(collection(db, 'games'), {
-                        player1: playerId,
-                        player2: null,
-                        status: 'waiting',
-                        towers: {
-                            bottom: { left: 250, center: 500, right: 250 },
-                            top: { left: 250, center: 500, right: 250 }
-                        },
-                        troops: { bottom: [], top: [] },
-                        createdAt: Date.now()
-                    });
-                    gameId = docRef.id;
-                    playerSide = 'bottom';
-
-                    // Wait for opponent
-                    unsubscribe = onSnapshot(doc(db, 'games', gameId), (snapshot) => {
-                        const data = snapshot.data();
-                        if (data && data.status === 'playing') {
-                            if (unsubscribe) unsubscribe();
+                    const gameData = gameDoc.data();
+                    
+                    // Double check it's still waiting and doesn't have player2
+                    if (gameData.status === 'waiting' && !gameData.player2) {
+                        gameId = gameDoc.id;
+                        try {
+                            await updateDoc(doc(db, 'games', gameId), {
+                                player2: playerId,
+                                status: 'playing'
+                            });
+                            playerSide = 'top';
+                            console.log('Joined game:', gameId);
                             startGame();
+                            return;
+                        } catch (error) {
+                            console.log('Failed to join game, creating new one:', error);
+                            // If update fails, fall through to create new game
                         }
-                    });
+                    }
                 }
+
+                // Create new game (either no games found or join failed)
+                const docRef = await addDoc(collection(db, 'games'), {
+                    player1: playerId,
+                    player2: null,
+                    status: 'waiting',
+                    towers: {
+                        bottom: { left: 250, center: 500, right: 250 },
+                        top: { left: 250, center: 500, right: 250 }
+                    },
+                    troops: { bottom: [], top: [] },
+                    createdAt: Date.now()
+                });
+                gameId = docRef.id;
+                playerSide = 'bottom';
+                console.log('Created game:', gameId, 'waiting for opponent...');
+
+                // Wait for opponent with timeout
+                let waitTimeout = setTimeout(() => {
+                    if (unsubscribe) unsubscribe();
+                    showScreen('menu');
+                    document.getElementById('menu-error').textContent = 'No opponent found. Try again.';
+                }, 30000); // 30 second timeout
+
+                unsubscribe = onSnapshot(doc(db, 'games', gameId), (snapshot) => {
+                    const data = snapshot.data();
+                    if (data && data.status === 'playing' && data.player2) {
+                        clearTimeout(waitTimeout);
+                        if (unsubscribe) unsubscribe();
+                        console.log('Opponent joined!');
+                        startGame();
+                    }
+                });
             } catch (error) {
                 console.error('Matchmaking error:', error);
                 showScreen('menu');
