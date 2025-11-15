@@ -290,7 +290,7 @@
         <div id="game-screen" class="hidden" style="display: flex; flex-direction: column; width: 100%; height: 100%;">
             <!-- Top Bar -->
             <div id="top-bar">
-                <span>Opponent</span>
+                <span id="top-player-label">Opponent</span>
                 <div class="tower-info">
                     <span id="top-king">👑 500</span>
                     <span id="top-left">🏰 250</span>
@@ -475,7 +475,17 @@ const firebaseConfig = {
         // Start game
         function startGame() {
             showScreen('game');
-            document.getElementById('player-info').textContent = `You (${playerSide})`;
+            
+            // Update labels based on player side
+            if (playerSide === 'bottom') {
+                document.getElementById('top-player-label').textContent = 'Opponent (Red)';
+                document.getElementById('player-info').textContent = 'You (Blue)';
+            } else {
+                document.getElementById('top-player-label').textContent = 'You (Blue)';
+                document.getElementById('player-info').textContent = 'Opponent (Red)';
+            }
+            
+            console.log('Game started! You are:', playerSide);
             
             // Start elixir generation
             setInterval(() => {
@@ -498,16 +508,17 @@ const firebaseConfig = {
 
                 // Check win condition
                 if (data.towers.top.center <= 0) {
-                    endGame('Bottom player wins! 🎉');
+                    endGame(playerSide === 'bottom' ? 'You Win! 🎉' : 'You Lose! 😢');
                 } else if (data.towers.bottom.center <= 0) {
-                    endGame('Top player wins! 🎉');
+                    endGame(playerSide === 'top' ? 'You Win! 🎉' : 'You Lose! 😢');
                 }
 
-                // Update opponent troops
-                const opponentSide = playerSide === 'bottom' ? 'top' : 'bottom';
-                if (data.troops && data.troops[opponentSide]) {
-                    const myTroops = troops.filter(t => t.owner === playerSide);
-                    troops = [...myTroops, ...data.troops[opponentSide]];
+                // Sync ALL troops from Firestore
+                if (data.troops) {
+                    const allTroops = [...(data.troops.bottom || []), ...(data.troops.top || [])];
+                    // Keep our local troops but update with server data
+                    troops = allTroops;
+                    console.log('Synced troops from server:', troops.length);
                 }
             });
 
@@ -638,12 +649,18 @@ const firebaseConfig = {
             selectedCard = null;
             updateCardSelection();
 
-            // Sync to Firestore
+            // Sync to Firestore - get current troops from server first
             try {
-                const myTroops = troops.filter(t => t.owner === playerSide);
+                const gameDoc = await getDocs(query(collection(db, 'games')));
+                const currentGame = gameDoc.docs.find(d => d.id === gameId);
+                const currentData = currentGame?.data();
+                
+                const allMyTroops = troops.filter(t => t.owner === playerSide);
+                
                 await updateDoc(doc(db, 'games', gameId), {
-                    [`troops.${playerSide}`]: myTroops
+                    [`troops.${playerSide}`]: allMyTroops
                 });
+                console.log('Deployed troop, synced to server:', newTroop.id);
             } catch (error) {
                 console.error('Error syncing troops:', error);
             }
@@ -703,7 +720,9 @@ const firebaseConfig = {
 
             troops.forEach(troop => {
                 const troopEl = document.createElement('div');
-                troopEl.className = `troop ${troop.owner === playerSide ? 'troop-blue' : 'troop-red'}`;
+                // Always show MY troops as blue, opponent troops as red (from my perspective)
+                const isMyTroop = troop.owner === playerSide;
+                troopEl.className = `troop ${isMyTroop ? 'troop-blue' : 'troop-red'}`;
                 troopEl.style.left = troop.x + 'px';
                 troopEl.style.top = troop.y + 'px';
                 troopEl.innerHTML = troop.icon;
@@ -726,15 +745,20 @@ const firebaseConfig = {
             const rect = board.getBoundingClientRect();
             const centerX = rect.width / 2;
 
+            // If I'm bottom player, top towers are red (enemy), bottom towers are blue (mine)
+            // If I'm top player, top towers are blue (mine), bottom towers are red (enemy)
+            const topColor = playerSide === 'bottom' ? 'tower-red' : 'tower-blue';
+            const bottomColor = playerSide === 'bottom' ? 'tower-blue' : 'tower-red';
+
             // Top towers
-            createTowerElement('top-left-tower', 80, 60, 64, 64, 'tower tower-red', '🏰');
-            createTowerElement('top-center-tower', centerX - 40, 20, 80, 80, 'tower tower-red', '👑');
-            createTowerElement('top-right-tower', rect.width - 144, 60, 64, 64, 'tower tower-red', '🏰');
+            createTowerElement('top-left-tower', 80, 60, 64, 64, `tower ${topColor}`, '🏰');
+            createTowerElement('top-center-tower', centerX - 40, 20, 80, 80, `tower ${topColor}`, '👑');
+            createTowerElement('top-right-tower', rect.width - 144, 60, 64, 64, `tower ${topColor}`, '🏰');
 
             // Bottom towers
-            createTowerElement('bottom-left-tower', 80, rect.height - 124, 64, 64, 'tower tower-blue', '🏰');
-            createTowerElement('bottom-center-tower', centerX - 40, rect.height - 100, 80, 80, 'tower tower-blue', '👑');
-            createTowerElement('bottom-right-tower', rect.width - 144, rect.height - 124, 64, 64, 'tower tower-blue', '🏰');
+            createTowerElement('bottom-left-tower', 80, rect.height - 124, 64, 64, `tower ${bottomColor}`, '🏰');
+            createTowerElement('bottom-center-tower', centerX - 40, rect.height - 100, 80, 80, `tower ${bottomColor}`, '👑');
+            createTowerElement('bottom-right-tower', rect.width - 144, rect.height - 124, 64, 64, `tower ${bottomColor}`, '🏰');
         }
 
         function createTowerElement(id, left, top, width, height, className, icon) {
