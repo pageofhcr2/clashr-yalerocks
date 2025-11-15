@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Clash Mini - Auto Chess</title>
+    <title>AutoChess Battle</title>
     <style>
         * {
             margin: 0;
@@ -13,866 +13,765 @@
 
         body {
             font-family: 'Arial', sans-serif;
-            overflow: hidden;
-            background: linear-gradient(to bottom, #1e3a8a, #7e22ce);
-        }
-
-        #game-container {
-            width: 100vw;
-            height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
             display: flex;
-            flex-direction: column;
-        }
-
-        #menu-screen, #matchmaking-screen, #gameover-screen {
-            width: 100%;
-            height: 100%;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
             justify-content: center;
-            color: white;
+            align-items: center;
+            padding: 20px;
         }
 
-        #menu-screen h1 {
-            font-size: 4rem;
-            margin-bottom: 2rem;
-            text-shadow: 3px 3px 6px rgba(0,0,0,0.5);
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            max-width: 1200px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
         }
 
-        .btn {
-            background: #eab308;
-            border: none;
-            padding: 1.5rem 3rem;
-            font-size: 1.5rem;
+        h1 {
+            text-align: center;
+            color: #667eea;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        #config-screen, #lobby-screen, #game-screen, #replay-screen {
+            display: none;
+        }
+
+        .screen.active {
+            display: block;
+        }
+
+        .input-group {
+            margin: 20px 0;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
             font-weight: bold;
-            border-radius: 12px;
-            cursor: pointer;
-            color: #1f2937;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
-            transition: all 0.2s;
+            color: #333;
         }
 
-        .btn:hover {
-            background: #ca8a04;
+        input, textarea {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #667eea;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+
+        textarea {
+            height: 150px;
+            font-family: monospace;
+        }
+
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s;
+            margin: 5px;
+        }
+
+        button:hover {
             transform: scale(1.05);
         }
 
-        .btn:disabled {
-            background: #6b7280;
-            cursor: not-allowed;
+        button:disabled {
             opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
         }
 
-        #game-screen {
+        .game-info {
             display: flex;
-            flex-direction: column;
-            height: 100%;
-        }
-
-        #top-section {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            background: linear-gradient(to bottom, #7f1d1d, #991b1b);
-            border-bottom: 4px solid #fbbf24;
-        }
-
-        #bottom-section {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            background: linear-gradient(to bottom, #1e40af, #1e3a8a);
+            justify-content: space-between;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #f0f0f0;
+            border-radius: 10px;
         }
 
         .player-info {
-            height: 50px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 0 20px;
-            color: white;
-            font-weight: bold;
-            font-size: 1.2rem;
-            background: rgba(0,0,0,0.3);
+            text-align: center;
         }
 
-        .stats {
-            display: flex;
-            gap: 20px;
-            align-items: center;
+        .player-info h3 {
+            color: #667eea;
+            margin-bottom: 5px;
+        }
+
+        .health {
+            font-size: 24px;
+            font-weight: bold;
+            color: #e74c3c;
+        }
+
+        .gold {
+            font-size: 20px;
+            font-weight: bold;
+            color: #f39c12;
         }
 
         .board {
-            flex: 1;
             display: grid;
-            grid-template-columns: repeat(8, 1fr);
-            grid-template-rows: repeat(4, 1fr);
-            gap: 8px;
-            padding: 20px;
-            position: relative;
+            grid-template-columns: repeat(5, 80px);
+            gap: 10px;
+            margin: 20px auto;
+            justify-content: center;
         }
 
         .cell {
-            background: rgba(255, 255, 255, 0.1);
-            border: 2px solid rgba(255, 255, 255, 0.3);
-            border-radius: 8px;
+            width: 80px;
+            height: 80px;
+            background: #ecf0f1;
+            border: 3px solid #bdc3c7;
+            border-radius: 10px;
             display: flex;
-            align-items: center;
+            flex-direction: column;
             justify-content: center;
-            position: relative;
+            align-items: center;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: all 0.3s;
+            position: relative;
         }
 
         .cell:hover {
-            background: rgba(255, 255, 255, 0.2);
+            border-color: #667eea;
             transform: scale(1.05);
         }
 
         .cell.occupied {
-            cursor: default;
+            background: #3498db;
+            border-color: #2980b9;
         }
 
-        .cell.highlight {
-            background: rgba(234, 179, 8, 0.4);
-            border-color: #eab308;
+        .cell.enemy {
+            background: #e74c3c;
+            border-color: #c0392b;
         }
 
-        .mini {
-            font-size: 2.5rem;
-            position: relative;
-            animation: float 2s ease-in-out infinite;
+        .unit {
+            color: white;
+            font-weight: bold;
+            text-align: center;
+            font-size: 24px;
         }
 
-        @keyframes float {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-5px); }
+        .unit-name {
+            font-size: 10px;
+            margin-top: 2px;
         }
 
-        .hp-bar {
+        .unit-hp {
             position: absolute;
             bottom: 2px;
-            left: 10%;
-            right: 10%;
-            height: 4px;
-            background: #1f2937;
-            border-radius: 2px;
-            overflow: hidden;
-        }
-
-        .hp-fill {
-            height: 100%;
-            background: linear-gradient(to right, #ef4444, #22c55e);
-            border-radius: 2px;
-            transition: width 0.3s;
-        }
-
-        .star-indicator {
-            position: absolute;
-            top: 2px;
-            right: 2px;
-            color: #fbbf24;
-            font-size: 0.8rem;
-        }
-
-        #shop-section {
-            height: 180px;
-            background: #111827;
-            display: flex;
-            flex-direction: column;
-            padding: 10px 20px;
-        }
-
-        #shop-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 10px;
-        }
-
-        #shop-controls {
-            display: flex;
-            gap: 10px;
-            align-items: center;
-        }
-
-        .shop-btn {
-            background: #7c3aed;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 10px;
             color: white;
-            border: none;
-            padding: 8px 16px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: bold;
-            transition: all 0.2s;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 2px 4px;
+            border-radius: 3px;
         }
 
-        .shop-btn:hover:not(:disabled) {
-            background: #6d28d9;
-            transform: scale(1.05);
-        }
-
-        .shop-btn:disabled {
-            background: #4b5563;
-            cursor: not-allowed;
-            opacity: 0.5;
-        }
-
-        #shop-minis {
-            display: flex;
-            gap: 10px;
-            overflow-x: auto;
-        }
-
-        .shop-mini {
-            min-width: 100px;
-            height: 100px;
-            background: linear-gradient(to bottom, #7c3aed, #6d28d9);
-            border-radius: 12px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            transition: all 0.2s;
-            position: relative;
-        }
-
-        .shop-mini:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 8px 16px rgba(0,0,0,0.4);
-        }
-
-        .shop-mini-icon {
-            font-size: 2rem;
-            margin-bottom: 5px;
-        }
-
-        .shop-mini-info {
-            font-size: 0.7rem;
-            color: white;
-            text-align: center;
-        }
-
-        .shop-mini-cost {
-            position: absolute;
-            bottom: 5px;
-            background: #fbbf24;
-            color: #1f2937;
-            padding: 2px 8px;
+        .shop {
+            background: #34495e;
+            padding: 20px;
             border-radius: 10px;
+            margin-top: 20px;
+        }
+
+        .shop h3 {
+            color: white;
+            margin-bottom: 15px;
+        }
+
+        .shop-items {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .shop-item {
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            cursor: pointer;
+            transition: transform 0.2s;
+            border: 3px solid transparent;
+            min-width: 100px;
+        }
+
+        .shop-item:hover {
+            transform: scale(1.05);
+            border-color: #f39c12;
+        }
+
+        .shop-item.selected {
+            border-color: #2ecc71;
+        }
+
+        .shop-item .icon {
+            font-size: 32px;
+        }
+
+        .shop-item .cost {
+            color: #f39c12;
             font-weight: bold;
-            font-size: 0.8rem;
+            margin-top: 5px;
+        }
+
+        .actions {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 20px;
         }
 
         .phase-indicator {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            font-size: 4rem;
+            text-align: center;
+            padding: 10px;
+            background: #2ecc71;
             color: white;
+            border-radius: 8px;
+            margin-bottom: 15px;
             font-weight: bold;
-            z-index: 1000;
-            text-shadow: 0 0 20px rgba(0,0,0,0.8);
-            animation: fadeInOut 2s;
+            font-size: 18px;
         }
 
-        @keyframes fadeInOut {
-            0%, 100% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
-            50% { opacity: 1; transform: translate(-50%, -50%) scale(1.2); }
+        .phase-indicator.battle {
+            background: #e74c3c;
         }
 
-        .loading {
-            font-size: 2rem;
-            animation: pulse 1.5s infinite;
+        .waiting {
+            text-align: center;
+            color: #7f8c8d;
+            font-style: italic;
+            margin: 20px 0;
         }
 
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
+        .battle-log {
+            background: #2c3e50;
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            max-height: 200px;
+            overflow-y: auto;
+            margin-top: 20px;
+            font-family: monospace;
+            font-size: 12px;
         }
 
-        .hidden {
-            display: none !important;
+        .battle-log div {
+            margin: 5px 0;
+            padding: 3px 0;
         }
 
-        .error-msg {
-            color: #fca5a5;
-            margin-top: 1rem;
-            font-size: 1rem;
+        .damage {
+            color: #e74c3c;
         }
 
-        .info-text {
-            color: #d1d5db;
-            margin-top: 1rem;
-            font-size: 0.9rem;
+        .heal {
+            color: #2ecc71;
         }
 
-        .gold-display {
-            color: #fbbf24;
-            font-size: 1.5rem;
-            font-weight: bold;
+        #matchmaking-status {
+            text-align: center;
+            padding: 20px;
         }
 
-        .level-display {
-            color: #c084fc;
-            font-size: 1.2rem;
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .replay-controls {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 20px;
         }
     </style>
 </head>
 <body>
-    <div id="game-container">
-        <!-- Menu Screen -->
-        <div id="menu-screen">
-            <h1>⚔️ Clash Mini Auto Chess 🎲</h1>
-            <button class="btn" onclick="startMatchmaking()">🎮 Find Match (1v1)</button>
-            <div class="info-text">Build your army and watch them battle!</div>
-            <div id="menu-error" class="error-msg"></div>
+    <div class="container">
+        <h1>⚔️ AutoChess Battle Arena</h1>
+
+        <div id="config-screen" class="screen active">
+            <div class="input-group">
+                <label>Firebase Configuration (JSON):</label>
+                <textarea id="firebase-config" placeholder='{"apiKey": "AIzaSyCvLSW4EvEFKlIamsL3lBV3GeDAtkvhhTo", "authDomain": "tuffmangophonk-fb5bc.firebaseapp.com", "projectId": "tuffmangophonk-fb5bc", "storageBucket": "tuffmangophonk-fb5bc.firebasestorage.app", "messagingSenderId": "199500063543", "appId": "1:199500063543:web:0c91b7db5c4910b5a5b0b2"}'></textarea>
+            </div>
+            <div class="input-group">
+                <label>Your Name:</label>
+                <input type="text" id="player-name" placeholder="Enter your name">
+            </div>
+            <div style="text-align: center;">
+                <button onclick="initializeFirebase()">Connect to Game</button>
+            </div>
         </div>
 
-        <!-- Matchmaking Screen -->
-        <div id="matchmaking-screen" class="hidden">
-            <div class="loading">🔍 Finding opponent...</div>
-            <div class="info-text">Please wait</div>
+        <div id="lobby-screen" class="screen">
+            <div id="matchmaking-status">
+                <h2>Finding Opponent...</h2>
+                <div class="spinner"></div>
+                <p>Waiting for another player to join...</p>
+            </div>
         </div>
 
-        <!-- Game Over Screen -->
-        <div id="gameover-screen" class="hidden">
-            <h1 id="winner-text"></h1>
-            <button class="btn" onclick="returnToMenu()">Return to Menu</button>
-        </div>
-
-        <!-- Game Screen -->
-        <div id="game-screen" class="hidden">
-            <!-- Top Player Board -->
-            <div id="top-section">
+        <div id="game-screen" class="screen">
+            <div class="phase-indicator" id="phase-indicator">Preparation Phase</div>
+            
+            <div class="game-info">
                 <div class="player-info">
-                    <span id="top-player-name">Opponent</span>
-                    <div class="stats">
-                        <span class="level-display">⭐ Level <span id="top-level">1</span></span>
-                        <span class="gold-display">💰 <span id="top-gold">0</span></span>
-                        <span style="color: #ef4444;">❤️ <span id="top-health">20</span></span>
-                    </div>
+                    <h3 id="player1-name">You</h3>
+                    <div class="health">❤️ <span id="player1-health">20</span></div>
+                    <div class="gold">💰 <span id="player1-gold">10</span></div>
                 </div>
-                <div class="board" id="top-board"></div>
-            </div>
-
-            <!-- Bottom Player Board -->
-            <div id="bottom-section">
-                <div class="board" id="bottom-board"></div>
                 <div class="player-info">
-                    <span id="bottom-player-name">You</span>
-                    <div class="stats">
-                        <span class="level-display">⭐ Level <span id="bottom-level">1</span></span>
-                        <span class="gold-display">💰 <span id="bottom-gold">10</span></span>
-                        <span style="color: #22c55e;">❤️ <span id="bottom-health">20</span></span>
-                    </div>
+                    <div style="font-size: 14px; color: #7f8c8d;">Round <span id="round-number">1</span></div>
+                </div>
+                <div class="player-info">
+                    <h3 id="player2-name">Opponent</h3>
+                    <div class="health">❤️ <span id="player2-health">20</span></div>
+                    <div class="gold">💰 <span id="player2-gold">10</span></div>
                 </div>
             </div>
 
-            <!-- Shop Section -->
-            <div id="shop-section">
-                <div id="shop-header">
-                    <div class="gold-display">💰 Gold: <span id="player-gold">10</span></div>
-                    <div id="shop-controls">
-                        <button class="shop-btn" onclick="refreshShop()" id="refresh-btn">🔄 Refresh (2g)</button>
-                        <button class="shop-btn" onclick="levelUp()" id="level-btn">⭐ Level Up (4g)</button>
-                        <button class="shop-btn" onclick="readyForBattle()" id="ready-btn">⚔️ Ready!</button>
-                    </div>
-                </div>
-                <div id="shop-minis"></div>
+            <div class="board" id="board"></div>
+
+            <div id="waiting-message" class="waiting" style="display: none;">
+                Waiting for opponent to finish their turn...
             </div>
+
+            <div class="shop" id="shop">
+                <h3>🛒 Shop (Auto-refreshes when you place a unit)</h3>
+                <div class="shop-items" id="shop-items"></div>
+            </div>
+
+            <div class="actions">
+                <button id="ready-btn" onclick="readyForBattle()">Ready for Battle!</button>
+            </div>
+
+            <div class="battle-log" id="battle-log" style="display: none;"></div>
         </div>
 
-        <div id="phase-indicator"></div>
+        <div id="replay-screen" class="screen">
+            <h2 style="text-align: center; margin-bottom: 20px;">Battle Replay</h2>
+            <div class="board" id="replay-board"></div>
+            <div class="battle-log" id="replay-log"></div>
+            <div class="replay-controls">
+                <button onclick="replayBattle()">▶️ Replay Battle</button>
+                <button onclick="nextRound()">➡️ Next Round</button>
+            </div>
+        </div>
     </div>
 
-    <script type="module">
-        // Firebase Configuration - REPLACE WITH YOUR CONFIG
-        const firebaseConfig = {
-  apiKey: "AIzaSyCvLSW4EvEFKlIamsL3lBV3GeDAtkvhhTo",
-  authDomain: "tuffmangophonk-fb5bc.firebaseapp.com",
-  projectId: "tuffmangophonk-fb5bc",
-  storageBucket: "tuffmangophonk-fb5bc.firebasestorage.app",
-  messagingSenderId: "199500063543",
-  appId: "1:199500063543:web:0c91b7db5c4910b5a5b0b2",
-};
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
 
-        // Import Firebase
-        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-        import { getFirestore, collection, addDoc, doc, updateDoc, onSnapshot, query, where, getDocs } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
-
-        // Mini Units Data
-        const MINIS = {
-            knight: { name: 'Knight', icon: '🛡️', hp: 150, damage: 20, speed: 1, range: 1, cost: 3, rarity: 'common' },
-            archer: { name: 'Archer', icon: '🏹', hp: 80, damage: 15, speed: 1.2, range: 3, cost: 3, rarity: 'common' },
-            wizard: { name: 'Wizard', icon: '🧙', hp: 100, damage: 30, speed: 0.8, range: 4, cost: 4, rarity: 'rare' },
-            giant: { name: 'Giant', icon: '👹', hp: 300, damage: 40, speed: 0.6, range: 1, cost: 5, rarity: 'rare' },
-            dragon: { name: 'Dragon', icon: '🐉', hp: 200, damage: 50, speed: 1.5, range: 2, cost: 6, rarity: 'epic' },
-            prince: { name: 'Prince', icon: '🤴', hp: 180, damage: 35, speed: 1.8, range: 1, cost: 4, rarity: 'rare' },
-            witch: { name: 'Witch', icon: '🧛', hp: 90, damage: 20, speed: 1, range: 4, cost: 4, rarity: 'rare' },
-            golem: { name: 'Golem', icon: '🗿', hp: 400, damage: 30, speed: 0.4, range: 1, cost: 7, rarity: 'epic' }
+    <script>
+        let db, gameId, playerId, playerNumber;
+        let selectedUnit = null;
+        let gameState = {
+            player1: { health: 20, gold: 10, board: [], ready: false },
+            player2: { health: 20, gold: 10, board: [], ready: false },
+            phase: 'prep',
+            round: 1,
+            battleLog: []
         };
-
-        // Game State
-        let db;
-        let playerId = `player_${Math.random().toString(36).substr(2, 9)}`;
-        let gameId = null;
-        let playerSide = null;
-        let gold = 10;
-        let level = 1;
-        let health = 20;
-        let myBoard = [];
-        let opponentBoard = [];
-        let shopUnits = [];
-        let selectedShopUnit = null;
-        let gamePhase = 'preparation'; // preparation, battle
-        let isReady = false;
-        let battleInterval = null;
         let unsubscribe = null;
+        let currentBattleLog = [];
 
-        // Initialize Firebase
-        async function initFirebase() {
-            try {
-                const app = initializeApp(firebaseConfig);
-                db = getFirestore(app);
-                console.log('Firebase initialized');
-            } catch (error) {
-                document.getElementById('menu-error').textContent = 'Failed to initialize Firebase. Check your config.';
-                console.error('Firebase init error:', error);
-            }
+        const UNITS = [
+            { id: 'knight', name: 'Knight', icon: '🗡️', cost: 3, hp: 15, atk: 5, spd: 3 },
+            { id: 'archer', name: 'Archer', icon: '🏹', cost: 3, hp: 10, atk: 7, spd: 4 },
+            { id: 'mage', name: 'Mage', icon: '🔮', cost: 4, hp: 8, atk: 10, spd: 2 },
+            { id: 'tank', name: 'Tank', icon: '🛡️', cost: 5, hp: 25, atk: 3, spd: 1 },
+            { id: 'ninja', name: 'Ninja', icon: '🥷', cost: 4, hp: 12, atk: 8, spd: 5 },
+            { id: 'dragon', name: 'Dragon', icon: '🐉', cost: 6, hp: 20, atk: 12, spd: 3 }
+        ];
+
+        function showScreen(screenId) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById(screenId).classList.add('active');
         }
 
-        // Start matchmaking
-        window.startMatchmaking = async function() {
-            if (!db) {
-                document.getElementById('menu-error').textContent = 'Firebase not initialized';
+        function initializeFirebase() {
+            const configText = document.getElementById('firebase-config').value.trim();
+            const playerName = document.getElementById('player-name').value.trim();
+
+            if (!configText || !playerName) {
+                alert('Please enter both Firebase config and your name!');
                 return;
             }
 
-            showScreen('matchmaking');
-
             try {
-                await new Promise(resolve => setTimeout(resolve, Math.random() * 500));
-
-                const gamesRef = collection(db, 'games');
-                const q = query(gamesRef, where('status', '==', 'waiting'));
-                const snapshot = await getDocs(q);
-
-                if (!snapshot.empty) {
-                    const gameDoc = snapshot.docs[0];
-                    const gameData = gameDoc.data();
-                    
-                    if (gameData.status === 'waiting' && !gameData.player2) {
-                        gameId = gameDoc.id;
-                        try {
-                            await updateDoc(doc(db, 'games', gameId), {
-                                player2: playerId,
-                                status: 'playing',
-                                phase: 'preparation',
-                                round: 1
-                            });
-                            playerSide = 'top';
-                            console.log('Joined game:', gameId);
-                            startGame();
-                            return;
-                        } catch (error) {
-                            console.log('Failed to join game:', error);
-                        }
-                    }
-                }
-
-                const docRef = await addDoc(collection(db, 'games'), {
-                    player1: playerId,
-                    player2: null,
-                    status: 'waiting',
-                    phase: 'preparation',
-                    round: 1,
-                    players: {
-                        bottom: { health: 20, gold: 10, level: 1, board: [], ready: false },
-                        top: { health: 20, gold: 10, level: 1, board: [], ready: false }
-                    },
-                    createdAt: Date.now()
-                });
-                gameId = docRef.id;
-                playerSide = 'bottom';
-                console.log('Created game:', gameId);
-
-                let waitTimeout = setTimeout(() => {
-                    if (unsubscribe) unsubscribe();
-                    showScreen('menu');
-                    document.getElementById('menu-error').textContent = 'No opponent found. Try again.';
-                }, 30000);
-
-                unsubscribe = onSnapshot(doc(db, 'games', gameId), (snapshot) => {
-                    const data = snapshot.data();
-                    if (data && data.status === 'playing' && data.player2) {
-                        clearTimeout(waitTimeout);
-                        if (unsubscribe) unsubscribe();
-                        console.log('Opponent joined!');
-                        startGame();
-                    }
-                });
-            } catch (error) {
-                console.error('Matchmaking error:', error);
-                showScreen('menu');
-                document.getElementById('menu-error').textContent = 'Matchmaking failed: ' + error.message;
+                const config = JSON.parse(configText);
+                firebase.initializeApp(config);
+                db = firebase.firestore();
+                playerId = playerName + '_' + Date.now();
+                findMatch();
+            } catch (e) {
+                alert('Invalid Firebase configuration: ' + e.message);
             }
-        };
+        }
 
-        // Start game
-        function startGame() {
-            showScreen('game');
-            
-            document.getElementById('bottom-player-name').textContent = playerSide === 'bottom' ? 'You (Blue)' : 'Opponent (Red)';
-            document.getElementById('top-player-name').textContent = playerSide === 'top' ? 'You (Blue)' : 'Opponent (Red)';
-            
-            initializeBoards();
-            generateShop();
-            
-            // Listen for game updates
-            unsubscribe = onSnapshot(doc(db, 'games', gameId), (snapshot) => {
-                const data = snapshot.data();
-                if (!data) return;
+        async function findMatch() {
+            showScreen('lobby-screen');
 
-                const opponentSide = playerSide === 'bottom' ? 'top' : 'bottom';
+            const gamesRef = db.collection('games');
+            const availableGames = await gamesRef.where('status', '==', 'waiting').limit(1).get();
+
+            if (!availableGames.empty) {
+                const game = availableGames.docs[0];
+                gameId = game.id;
+                playerNumber = 2;
                 
-                // Update opponent's board
-                if (data.players && data.players[opponentSide]) {
-                    opponentBoard = data.players[opponentSide].board || [];
-                    renderOpponentBoard();
-                    
-                    document.getElementById(`${opponentSide}-health`).textContent = data.players[opponentSide].health || 20;
-                    document.getElementById(`${opponentSide}-gold`).textContent = data.players[opponentSide].gold || 0;
-                    document.getElementById(`${opponentSide}-level`).textContent = data.players[opponentSide].level || 1;
-                }
+                await gamesRef.doc(gameId).update({
+                    player2: playerId,
+                    player2Name: document.getElementById('player-name').value,
+                    status: 'active'
+                });
+            } else {
+                const newGame = await gamesRef.add({
+                    player1: playerId,
+                    player1Name: document.getElementById('player-name').value,
+                    player2: null,
+                    player2Name: null,
+                    status: 'waiting',
+                    state: gameState,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                gameId = newGame.id;
+                playerNumber = 1;
+            }
 
-                // Check if both players ready
-                if (data.phase === 'preparation' && 
-                    data.players?.bottom?.ready && 
-                    data.players?.top?.ready) {
-                    startBattle();
-                }
+            listenToGame();
+        }
 
-                // Battle results
-                if (data.battleResult) {
-                    const result = data.battleResult;
-                    if (result.winner === playerSide) {
-                        health = Math.max(0, health);
-                    } else if (result.loser === playerSide) {
-                        health = Math.max(0, health - result.damage);
-                        updatePlayerStats();
-                    }
-                    
-                    // Check game over
-                    if (data.players[playerSide].health <= 0) {
-                        endGame('You Lose! 😢');
-                    } else if (data.players[opponentSide].health <= 0) {
-                        endGame('You Win! 🎉');
-                    }
+        function listenToGame() {
+            unsubscribe = db.collection('games').doc(gameId).onSnapshot(doc => {
+                const data = doc.data();
+                
+                if (data.status === 'active' && data.state) {
+                    gameState = data.state;
+                    updateGameUI();
+                    showScreen('game-screen');
                 }
             });
         }
 
-        // Initialize boards
-        function initializeBoards() {
-            const topBoard = document.getElementById('top-board');
-            const bottomBoard = document.getElementById('bottom-board');
+        function initBoard() {
+            const board = document.getElementById('board');
+            board.innerHTML = '';
             
-            topBoard.innerHTML = '';
-            bottomBoard.innerHTML = '';
-            
-            for (let i = 0; i < 32; i++) {
-                const cell = document.createElement('div');
-                cell.className = 'cell';
-                cell.dataset.index = i;
-                topBoard.appendChild(cell);
-            }
-            
-            for (let i = 0; i < 32; i++) {
+            for (let i = 0; i < 10; i++) {
                 const cell = document.createElement('div');
                 cell.className = 'cell';
                 cell.dataset.index = i;
                 cell.onclick = () => placeUnit(i);
-                bottomBoard.appendChild(cell);
+                board.appendChild(cell);
             }
         }
 
-        // Generate shop
         function generateShop() {
-            shopUnits = [];
-            const miniKeys = Object.keys(MINIS);
+            const shopItems = document.getElementById('shop-items');
+            shopItems.innerHTML = '';
             
-            for (let i = 0; i < 5; i++) {
-                const randomMini = miniKeys[Math.floor(Math.random() * miniKeys.length)];
-                shopUnits.push({
-                    id: `shop_${Date.now()}_${i}`,
-                    type: randomMini,
-                    ...MINIS[randomMini]
-                });
-            }
-            
-            renderShop();
-        }
+            const shuffled = [...UNITS].sort(() => Math.random() - 0.5);
+            const shopUnits = shuffled.slice(0, 3);
 
-        // Render shop
-        function renderShop() {
-            const container = document.getElementById('shop-minis');
-            container.innerHTML = '';
-            
-            shopUnits.forEach((unit, index) => {
-                const shopMini = document.createElement('div');
-                shopMini.className = 'shop-mini';
-                shopMini.onclick = () => buyUnit(index);
-                
-                shopMini.innerHTML = `
-                    <div class="shop-mini-icon">${unit.icon}</div>
-                    <div class="shop-mini-info">${unit.name}</div>
-                    <div class="shop-mini-cost">${unit.cost}g</div>
+            shopUnits.forEach(unit => {
+                const item = document.createElement('div');
+                item.className = 'shop-item';
+                item.onclick = () => selectUnit(unit);
+                item.innerHTML = `
+                    <div class="icon">${unit.icon}</div>
+                    <div>${unit.name}</div>
+                    <div class="cost">💰 ${unit.cost}</div>
+                    <div style="font-size: 10px; color: #7f8c8d;">
+                        HP: ${unit.hp} | ATK: ${unit.atk}
+                    </div>
                 `;
-                
-                container.appendChild(shopMini);
+                shopItems.appendChild(item);
             });
         }
 
-        // Buy unit
-        function buyUnit(index) {
-            const unit = shopUnits[index];
-            if (!unit || gold < unit.cost) return;
-            
-            selectedShopUnit = { ...unit, id: `unit_${Date.now()}`, hp: unit.hp, maxHp: unit.hp };
-            
-            // Highlight available cells
-            const cells = document.querySelectorAll('#bottom-board .cell');
-            cells.forEach(cell => {
-                if (!cell.classList.contains('occupied')) {
-                    cell.classList.add('highlight');
-                }
+        function selectUnit(unit) {
+            selectedUnit = unit;
+            document.querySelectorAll('.shop-item').forEach(item => {
+                item.classList.remove('selected');
             });
+            event.target.closest('.shop-item').classList.add('selected');
         }
 
-        // Place unit on board
-        function placeUnit(cellIndex) {
-            if (!selectedShopUnit) return;
-            if (myBoard.find(u => u.position === cellIndex)) return;
-            
-            gold -= selectedShopUnit.cost;
-            myBoard.push({ ...selectedShopUnit, position: cellIndex });
-            selectedShopUnit = null;
-            
-            updatePlayerStats();
-            renderMyBoard();
-            syncToFirestore();
-            
-            // Remove highlights
-            document.querySelectorAll('.cell').forEach(c => c.classList.remove('highlight'));
-        }
+        async function placeUnit(index) {
+            if (!selectedUnit || gameState.phase !== 'prep') return;
 
-        // Render my board
-        function renderMyBoard() {
-            const cells = document.querySelectorAll('#bottom-board .cell');
-            cells.forEach(cell => {
-                cell.innerHTML = '';
-                cell.classList.remove('occupied');
-            });
-            
-            myBoard.forEach(unit => {
-                const cell = cells[unit.position];
-                if (cell) {
-                    cell.classList.add('occupied');
-                    cell.innerHTML = `
-                        <div class="mini">${unit.icon}</div>
-                        <div class="hp-bar">
-                            <div class="hp-fill" style="width: ${(unit.hp / unit.maxHp * 100)}%"></div>
-                        </div>
-                    `;
-                }
-            });
-        }
+            const myKey = 'player' + playerNumber;
+            const myGold = gameState[myKey].gold;
+            const myBoard = gameState[myKey].board;
 
-        // Render opponent board
-        function renderOpponentBoard() {
-            const cells = document.querySelectorAll('#top-board .cell');
-            cells.forEach(cell => {
-                cell.innerHTML = '';
-                cell.classList.remove('occupied');
-            });
-            
-            opponentBoard.forEach(unit => {
-                const cell = cells[unit.position];
-                if (cell) {
-                    cell.classList.add('occupied');
-                    cell.innerHTML = `
-                        <div class="mini">${unit.icon}</div>
-                        <div class="hp-bar">
-                            <div class="hp-fill" style="width: ${(unit.hp / unit.maxHp * 100)}%"></div>
-                        </div>
-                    `;
-                }
-            });
-        }
+            if (myGold < selectedUnit.cost) {
+                alert('Not enough gold!');
+                return;
+            }
 
-        // Refresh shop
-        window.refreshShop = function() {
-            if (gold < 2) return;
-            gold -= 2;
+            if (myBoard.find(u => u.pos === index)) {
+                alert('Cell already occupied!');
+                return;
+            }
+
+            const newUnit = {
+                ...selectedUnit,
+                pos: index,
+                currentHp: selectedUnit.hp,
+                id: selectedUnit.id + '_' + Date.now()
+            };
+
+            myBoard.push(newUnit);
+            gameState[myKey].gold -= selectedUnit.cost;
+            gameState[myKey].board = myBoard;
+
+            await db.collection('games').doc(gameId).update({ state: gameState });
+            
+            selectedUnit = null;
             generateShop();
-            updatePlayerStats();
-            syncToFirestore();
-        };
-
-        // Level up
-        window.levelUp = function() {
-            if (gold < 4) return;
-            gold -= 4;
-            level++;
-            updatePlayerStats();
-            syncToFirestore();
-        };
-
-        // Ready for battle
-        window.readyForBattle = async function() {
-            isReady = true;
-            document.getElementById('ready-btn').disabled = true;
-            
-            await updateDoc(doc(db, 'games', gameId), {
-                [`players.${playerSide}.ready`]: true
-            });
-            
-            showPhaseIndicator('⏳ Waiting for opponent...');
-        };
-
-        // Start battle
-        async function startBattle() {
-            gamePhase = 'battle';
-            showPhaseIndicator('⚔️ BATTLE!');
-            
-            document.getElementById('shop-section').style.display = 'none';
-            
-            // Simulate battle
-            setTimeout(async () => {
-                const myUnitsAlive = myBoard.filter(u => u.hp > 0).length;
-                const opponentUnitsAlive = opponentBoard.filter(u => u.hp > 0).length;
-                
-                let winner, loser, damage;
-                if (myUnitsAlive > opponentUnitsAlive) {
-                    winner = playerSide;
-                    loser = playerSide === 'bottom' ? 'top' : 'bottom';
-                    damage = Math.max(1, myUnitsAlive - opponentUnitsAlive);
-                } else if (opponentUnitsAlive > myUnitsAlive) {
-                    loser = playerSide;
-                    winner = playerSide === 'bottom' ? 'top' : 'bottom';
-                    damage = Math.max(1, opponentUnitsAlive - myUnitsAlive);
-                } else {
-                    // Draw
-                    winner = null;
-                    loser = null;
-                    damage = 0;
-                }
-                
-                if (loser === playerSide) {
-                    health -= damage;
-                }
-                
-                // Reset for next round
-                gold += 5;
-                isReady = false;
-                gamePhase = 'preparation';
-                
-                updatePlayerStats();
-                document.getElementById('shop-section').style.display = 'flex';
-                document.getElementById('ready-btn').disabled = false;
-                generateShop();
-                
-                await updateDoc(doc(db, 'games', gameId), {
-                    [`players.${playerSide}.ready`]: false,
-                    [`players.${playerSide}.health`]: health,
-                    [`players.${playerSide}.gold`]: gold,
-                    battleResult: { winner, loser, damage, timestamp: Date.now() }
-                });
-                
-                if (health <= 0) {
-                    endGame('You Lose! 😢');
-                }
-            }, 3000);
+            updateGameUI();
         }
 
-        // Show phase indicator
-        function showPhaseIndicator(text) {
-            const indicator = document.getElementById('phase-indicator');
-            indicator.textContent = text;
-            indicator.style.display = 'block';
-            setTimeout(() => {
-                indicator.style.display = 'none';
-            }, 2000);
-        }
+        async function readyForBattle() {
+            const myKey = 'player' + playerNumber;
+            gameState[myKey].ready = true;
+            await db.collection('games').doc(gameId).update({ state: gameState });
 
-        // Update player stats
-        function updatePlayerStats() {
-            document.getElementById('player-gold').textContent = gold;
-            document.getElementById('bottom-gold').textContent = gold;
-            document.getElementById('bottom-health').textContent = health;
-            document.getElementById('bottom-level').textContent = level;
-        }
-
-        // Sync to Firestore
-        async function syncToFirestore() {
-            if (!db || !gameId) return;
-            try {
-                await updateDoc(doc(db, 'games', gameId), {
-                    [`players.${playerSide}`]: {
-                        health,
-                        gold,
-                        level,
-                        board: myBoard,
-                        ready: isReady
-                    }
-                });
-            } catch (error) {
-                console.error('Error syncing:', error);
+            if (gameState.player1.ready && gameState.player2.ready) {
+                await simulateBattle();
+            } else {
+                document.getElementById('waiting-message').style.display = 'block';
             }
         }
 
-        // End game
-        function endGame(message) {
-            if (battleInterval) clearInterval(battleInterval);
-            if (unsubscribe) unsubscribe();
-            
-            document.getElementById('winner-text').textContent = message;
-            showScreen('gameover');
+        async function simulateBattle() {
+            gameState.phase = 'battle';
+            currentBattleLog = [];
+            await db.collection('games').doc(gameId).update({ state: gameState });
+
+            const p1Units = [...gameState.player1.board].map(u => ({...u, owner: 1}));
+            const p2Units = [...gameState.player2.board].map(u => ({...u, owner: 2}));
+            let allUnits = [...p1Units, ...p2Units].sort((a, b) => b.spd - a.spd);
+
+            currentBattleLog.push('⚔️ Battle Start!');
+
+            while (p1Units.filter(u => u.currentHp > 0).length > 0 && 
+                   p2Units.filter(u => u.currentHp > 0).length > 0) {
+                
+                for (let unit of allUnits) {
+                    if (unit.currentHp <= 0) continue;
+
+                    const enemies = unit.owner === 1 ? p2Units : p1Units;
+                    const aliveEnemies = enemies.filter(e => e.currentHp > 0);
+                    
+                    if (aliveEnemies.length === 0) break;
+
+                    const target = aliveEnemies[Math.floor(Math.random() * aliveEnemies.length)];
+                    target.currentHp -= unit.atk;
+
+                    currentBattleLog.push(
+                        `${unit.icon} ${unit.name} attacks ${target.icon} ${target.name} for ${unit.atk} damage!`
+                    );
+
+                    if (target.currentHp <= 0) {
+                        currentBattleLog.push(`💀 ${target.icon} ${target.name} defeated!`);
+                    }
+
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                    displayBattleLog();
+                }
+            }
+
+            const p1Alive = p1Units.filter(u => u.currentHp > 0).length;
+            const p2Alive = p2Units.filter(u => u.currentHp > 0).length;
+
+            if (p1Alive > p2Alive) {
+                gameState.player2.health -= 3;
+                currentBattleLog.push('🏆 Player 1 wins this round!');
+            } else if (p2Alive > p1Alive) {
+                gameState.player1.health -= 3;
+                currentBattleLog.push('🏆 Player 2 wins this round!');
+            } else {
+                currentBattleLog.push('🤝 Draw! No damage dealt.');
+            }
+
+            gameState.battleLog = currentBattleLog;
+
+            if (gameState.player1.health <= 0 || gameState.player2.health <= 0) {
+                const winner = gameState.player1.health > 0 ? 'Player 1' : 'Player 2';
+                currentBattleLog.push(`🎉 ${winner} wins the game!`);
+                gameState.phase = 'ended';
+            } else {
+                gameState.phase = 'replay';
+            }
+
+            await db.collection('games').doc(gameId).update({ state: gameState });
+            showReplay();
         }
 
-        // Return to menu
-        window.returnToMenu = function() {
-            if (battleInterval) clearInterval(battleInterval);
-            if (unsubscribe) unsubscribe();
-            
-            gameId = null;
-            playerSide = null;
-            gold = 10;
-            level = 1;
-            health = 20;
-            myBoard = [];
-            opponentBoard = [];
-            isReady = false;
-            
-            showScreen('menu');
-        };
-
-        // Show screen
-        function showScreen(screen) {
-            document.getElementById('menu-screen').classList.add('hidden');
-            document.getElementById('matchmaking-screen').classList.add('hidden');
-            document.getElementById('gameover-screen').classList.add('hidden');
-            document.getElementById('game-screen').classList.add('hidden');
-            
-            document.getElementById(screen + '-screen').classList.remove('hidden');
+        function displayBattleLog() {
+            const logDiv = document.getElementById('battle-log');
+            logDiv.style.display = 'block';
+            logDiv.innerHTML = currentBattleLog.map(log => `<div>${log}</div>`).join('');
+            logDiv.scrollTop = logDiv.scrollHeight;
         }
 
-        // Initialize
-        initFirebase();
+        function showReplay() {
+            showScreen('replay-screen');
+            const replayLog = document.getElementById('replay-log');
+            replayLog.innerHTML = gameState.battleLog.map(log => `<div>${log}</div>`).join('');
+            updateReplayBoard();
+        }
+
+        function updateReplayBoard() {
+            const board = document.getElementById('replay-board');
+            board.innerHTML = '';
+            
+            for (let i = 0; i < 10; i++) {
+                const cell = document.createElement('div');
+                cell.className = 'cell';
+                
+                const p1Unit = gameState.player1.board.find(u => u.pos === i);
+                const p2Unit = gameState.player2.board.find(u => u.pos === i);
+                
+                if (p1Unit) {
+                    cell.classList.add('occupied');
+                    cell.innerHTML = `
+                        <div class="unit">${p1Unit.icon}</div>
+                        <div class="unit-name">${p1Unit.name}</div>
+                    `;
+                } else if (p2Unit) {
+                    cell.classList.add('enemy');
+                    cell.innerHTML = `
+                        <div class="unit">${p2Unit.icon}</div>
+                        <div class="unit-name">${p2Unit.name}</div>
+                    `;
+                }
+                
+                board.appendChild(cell);
+            }
+        }
+
+        function replayBattle() {
+            const replayLog = document.getElementById('replay-log');
+            replayLog.innerHTML = '';
+            
+            let i = 0;
+            const interval = setInterval(() => {
+                if (i >= gameState.battleLog.length) {
+                    clearInterval(interval);
+                    return;
+                }
+                const logEntry = document.createElement('div');
+                logEntry.textContent = gameState.battleLog[i];
+                replayLog.appendChild(logEntry);
+                replayLog.scrollTop = replayLog.scrollHeight;
+                i++;
+            }, 500);
+        }
+
+        async function nextRound() {
+            if (gameState.phase === 'ended') {
+                alert('Game has ended!');
+                return;
+            }
+
+            gameState.round++;
+            gameState.player1.gold = 10 + gameState.round;
+            gameState.player2.gold = 10 + gameState.round;
+            gameState.player1.board = [];
+            gameState.player2.board = [];
+            gameState.player1.ready = false;
+            gameState.player2.ready = false;
+            gameState.phase = 'prep';
+            gameState.battleLog = [];
+
+            await db.collection('games').doc(gameId).update({ state: gameState });
+            showScreen('game-screen');
+            updateGameUI();
+        }
+
+        function updateGameUI() {
+            document.getElementById('phase-indicator').textContent = 
+                gameState.phase === 'prep' ? 'Preparation Phase' : 
+                gameState.phase === 'battle' ? 'Battle in Progress!' :
+                gameState.phase === 'replay' ? 'Battle Ended - View Replay' : 'Game Ended';
+            
+            document.getElementById('phase-indicator').className = 
+                'phase-indicator' + (gameState.phase === 'battle' ? ' battle' : '');
+
+            document.getElementById('round-number').textContent = gameState.round;
+            document.getElementById('player1-health').textContent = gameState.player1.health;
+            document.getElementById('player2-health').textContent = gameState.player2.health;
+            document.getElementById('player1-gold').textContent = gameState.player1.gold;
+            document.getElementById('player2-gold').textContent = gameState.player2.gold;
+
+            const readyBtn = document.getElementById('ready-btn');
+            readyBtn.disabled = gameState.phase !== 'prep';
+
+            const myKey = 'player' + playerNumber;
+            if (gameState[myKey].ready) {
+                document.getElementById('waiting-message').style.display = 'block';
+            } else {
+                document.getElementById('waiting-message').style.display = 'none';
+            }
+
+            updateBoard();
+        }
+
+        function updateBoard() {
+            const cells = document.querySelectorAll('#board .cell');
+            cells.forEach((cell, i) => {
+                cell.className = 'cell';
+                cell.innerHTML = '';
+
+                const myKey = 'player' + playerNumber;
+                const myUnit = gameState[myKey].board.find(u => u.pos === i);
+
+                if (myUnit) {
+                    cell.classList.add('occupied');
+                    cell.innerHTML = `
+                        <div class="unit">${myUnit.icon}</div>
+                        <div class="unit-name">${myUnit.name}</div>
+                        <div class="unit-hp">HP: ${myUnit.currentHp}</div>
+                    `;
+                }
+            });
+        }
+
+        initBoard();
+        generateShop();
     </script>
 </body>
 </html>
