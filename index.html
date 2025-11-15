@@ -502,31 +502,57 @@
             showScreen('lobby-screen');
 
             const gamesRef = db.collection('games');
-            const availableGames = await gamesRef.where('status', '==', 'waiting').limit(1).get();
+            
+            // First, clean up old waiting games (older than 5 minutes)
+            const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+            const oldGames = await gamesRef
+                .where('status', '==', 'waiting')
+                .where('createdAt', '<', fiveMinutesAgo)
+                .get();
+            
+            oldGames.forEach(doc => {
+                doc.ref.delete();
+            });
+
+            // Try to find an available game
+            const availableGames = await gamesRef
+                .where('status', '==', 'waiting')
+                .orderBy('createdAt', 'asc')
+                .limit(1)
+                .get();
 
             if (!availableGames.empty) {
                 const game = availableGames.docs[0];
-                gameId = game.id;
-                playerNumber = 2;
+                const gameData = game.data();
                 
-                await gamesRef.doc(gameId).update({
-                    player2: playerId,
-                    player2Name: document.getElementById('player-name').value,
-                    status: 'active'
-                });
-            } else {
-                const newGame = await gamesRef.add({
-                    player1: playerId,
-                    player1Name: document.getElementById('player-name').value,
-                    player2: null,
-                    player2Name: null,
-                    status: 'waiting',
-                    state: gameState,
-                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                });
-                gameId = newGame.id;
-                playerNumber = 1;
+                // Make sure we're not joining our own game
+                if (gameData.player1 !== playerId) {
+                    gameId = game.id;
+                    playerNumber = 2;
+                    
+                    await gamesRef.doc(gameId).update({
+                        player2: playerId,
+                        player2Name: document.getElementById('player-name').value,
+                        status: 'active'
+                    });
+                    
+                    listenToGame();
+                    return;
+                }
             }
+            
+            // Create a new game if no available games found
+            const newGame = await gamesRef.add({
+                player1: playerId,
+                player1Name: document.getElementById('player-name').value,
+                player2: null,
+                player2Name: null,
+                status: 'waiting',
+                state: gameState,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            gameId = newGame.id;
+            playerNumber = 1;
 
             listenToGame();
         }
