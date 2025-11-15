@@ -500,6 +500,7 @@
     <script>
         let db, gameId, playerId, playerNumber;
         let selectedUnit = null;
+        let selectedBoardUnit = null; // For moving units
         let gameState = {
             player1: { health: 10, gold: 10, board: [], ready: false },
             player2: { health: 10, gold: 10, board: [], ready: false },
@@ -639,34 +640,143 @@
             const board = document.getElementById('board');
             board.innerHTML = '';
             
-            // 4x8 board = 32 cells
-            // Player 1 controls cells 0-15 (first 4 rows)
-            // Player 2 controls cells 16-31 (last 4 rows)
-            for (let i = 0; i < 32; i++) {
+            // 5x8 board = 40 cells
+            // Player 1 controls cells 0-19 (first 4 rows)
+            // Player 2 controls cells 20-39 (last 4 rows)
+            for (let i = 0; i < 40; i++) {
                 const cell = document.createElement('div');
                 cell.className = 'cell';
                 cell.dataset.index = i;
                 
-                // Add zone indicators
-                if (i < 16) {
+                // Add zone indicators - first 20 cells for player 1, last 20 for player 2
+                if (i < 20) {
                     cell.classList.add('player1-zone');
                 } else {
                     cell.classList.add('player2-zone');
                 }
                 
-                cell.onclick = () => placeUnit(i);
                 board.appendChild(cell);
             }
+            
+            // Add click handlers after cells are created
+            document.querySelectorAll('.cell').forEach(cell => {
+                cell.addEventListener('click', (e) => {
+                    // Don't trigger if clicking remove button
+                    if (e.target.classList.contains('remove-unit-btn')) return;
+                    handleCellClick(parseInt(cell.dataset.index));
+                });
+            });
         }
 
         function canPlaceInCell(cellIndex) {
-            // Player 1 can only place in cells 0-15
-            // Player 2 can only place in cells 16-31
+            // Player 1 can only place in cells 0-19
+            // Player 2 can only place in cells 20-39
             if (playerNumber === 1) {
-                return cellIndex < 16;
+                return cellIndex < 20;
             } else {
-                return cellIndex >= 16;
+                return cellIndex >= 20;
             }
+        }
+
+        function handleCellClick(index) {
+            if (gameState.phase !== 'prep') return;
+
+            const myKey = 'player' + playerNumber;
+            const myBoard = gameState[myKey].board;
+            const unitAtCell = myBoard.find(u => u.pos === index);
+
+            // If we have a unit selected from board (for moving)
+            if (selectedBoardUnit) {
+                moveUnit(index);
+                return;
+            }
+
+            // If clicking on own unit, select it for moving
+            if (unitAtCell) {
+                selectBoardUnit(index);
+                return;
+            }
+
+            // If we have a shop unit selected, place it
+            if (selectedUnit) {
+                placeUnit(index);
+                return;
+            }
+        }
+
+        function selectBoardUnit(index) {
+            const myKey = 'player' + playerNumber;
+            const myBoard = gameState[myKey].board;
+            const unit = myBoard.find(u => u.pos === index);
+
+            if (!unit) return;
+
+            // Toggle selection
+            if (selectedBoardUnit && selectedBoardUnit.id === unit.id) {
+                selectedBoardUnit = null;
+                updateBoard();
+                return;
+            }
+
+            selectedBoardUnit = unit;
+            selectedUnit = null; // Deselect shop unit
+            document.querySelectorAll('.shop-item').forEach(item => {
+                item.classList.remove('selected');
+            });
+            updateBoard();
+        }
+
+        async function moveUnit(newIndex) {
+            if (!selectedBoardUnit) return;
+
+            const myKey = 'player' + playerNumber;
+            const myBoard = gameState[myKey].board;
+
+            // Check if can place in this cell
+            if (!canPlaceInCell(newIndex)) {
+                alert('You can only place units in your half of the map!');
+                selectedBoardUnit = null;
+                updateBoard();
+                return;
+            }
+
+            // Check if cell is occupied by another unit
+            const occupyingUnit = myBoard.find(u => u.pos === newIndex);
+            if (occupyingUnit && occupyingUnit.id !== selectedBoardUnit.id) {
+                alert('Cell already occupied!');
+                selectedBoardUnit = null;
+                updateBoard();
+                return;
+            }
+
+            // Move the unit
+            const unit = myBoard.find(u => u.id === selectedBoardUnit.id);
+            if (unit) {
+                unit.pos = newIndex;
+                gameState[myKey].board = myBoard;
+                await db.collection('games').doc(gameId).update({ state: gameState });
+            }
+
+            selectedBoardUnit = null;
+            updateBoard();
+        }
+
+        async function removeUnitById(unitId) {
+            const myKey = 'player' + playerNumber;
+            const myBoard = gameState[myKey].board;
+            const unit = myBoard.find(u => u.id === unitId);
+
+            if (!unit) return;
+
+            // Refund 50% of unit cost
+            const refund = Math.floor(unit.cost / 2);
+            gameState[myKey].gold += refund;
+            gameState[myKey].board = myBoard.filter(u => u.id !== unitId);
+
+            await db.collection('games').doc(gameId).update({ state: gameState });
+            
+            selectedBoardUnit = null;
+            updateBoard();
         }
 
         function generateShop() {
@@ -909,8 +1019,9 @@
             }
 
             gameState.round++;
-            gameState.player1.gold = 10 + gameState.round;
-            gameState.player2.gold = 10 + gameState.round;
+            const baseGold = 10 + gameState.round;
+            gameState.player1.gold = Math.floor(baseGold / 2);
+            gameState.player2.gold = Math.floor(baseGold / 2);
             gameState.player1.ready = false;
             gameState.player2.ready = false;
             gameState.phase = 'prep';
@@ -958,7 +1069,7 @@
             const cells = document.querySelectorAll('#board .cell');
             cells.forEach((cell, i) => {
                 // Reset cell classes
-                if (i < 16) {
+                if (i < 20) {
                     cell.className = 'cell player1-zone';
                 } else {
                     cell.className = 'cell player2-zone';
@@ -969,6 +1080,16 @@
                 if (gameState.phase === 'prep') {
                     if (!canPlaceInCell(i)) {
                         cell.classList.add('disabled');
+                    }
+                    
+                    // Highlight valid move targets if unit is selected
+                    if (selectedBoardUnit && canPlaceInCell(i)) {
+                        const myKey = 'player' + playerNumber;
+                        const myBoard = gameState[myKey].board;
+                        const occupiedBySelf = myBoard.find(u => u.pos === i);
+                        if (!occupiedBySelf || occupiedBySelf.id === selectedBoardUnit.id) {
+                            cell.classList.add('move-target');
+                        }
                     }
                 }
 
@@ -981,11 +1102,33 @@
                 if (myUnit) {
                     cell.classList.add('occupied');
                     cell.classList.remove('player1-zone', 'player2-zone', 'disabled');
+                    
+                    // Highlight selected unit
+                    if (selectedBoardUnit && selectedBoardUnit.id === myUnit.id) {
+                        cell.classList.add('selected-unit');
+                    }
+                    
+                    const removeBtn = gameState.phase === 'prep' 
+                        ? `<button class="remove-unit-btn" data-unit-id="${myUnit.id}">✕</button>` 
+                        : '';
+                    
                     cell.innerHTML = `
+                        ${removeBtn}
                         <div class="unit">${myUnit.icon}</div>
                         <div class="unit-name">${myUnit.name}</div>
                         <div class="unit-hp">HP: ${myUnit.currentHp}/${myUnit.hp}</div>
                     `;
+                    
+                    // Add remove button click handler
+                    if (gameState.phase === 'prep') {
+                        const btn = cell.querySelector('.remove-unit-btn');
+                        if (btn) {
+                            btn.addEventListener('click', (e) => {
+                                e.stopPropagation();
+                                removeUnitById(myUnit.id);
+                            });
+                        }
+                    }
                 } else if (opponentUnit) {
                     cell.classList.add('enemy');
                     cell.classList.remove('player1-zone', 'player2-zone', 'disabled');
