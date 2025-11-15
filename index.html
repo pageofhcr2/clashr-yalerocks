@@ -131,6 +131,21 @@
             color: #f39c12;
         }
 
+        .troop-cap {
+            font-size: 14px;
+            color: #9b59b6;
+            margin-top: 5px;
+        }
+
+        .battle-arena {
+            position: relative;
+            background: #2c3e50;
+            border-radius: 15px;
+            padding: 20px;
+            min-height: 400px;
+            margin: 20px 0;
+        }
+
         .board {
             display: grid;
             grid-template-columns: repeat(5, 80px);
@@ -179,6 +194,7 @@
         .unit-name {
             font-size: 10px;
             margin-top: 2px;
+            color: white;
         }
 
         .unit-hp {
@@ -191,6 +207,34 @@
             background: rgba(0, 0, 0, 0.7);
             padding: 2px 4px;
             border-radius: 3px;
+        }
+
+        .animated-unit {
+            position: absolute;
+            font-size: 40px;
+            transition: all 0.5s ease-in-out;
+            z-index: 100;
+            filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.8));
+        }
+
+        .damage-text {
+            position: absolute;
+            font-size: 24px;
+            font-weight: bold;
+            color: #e74c3c;
+            animation: damageFloat 1s ease-out forwards;
+            z-index: 200;
+        }
+
+        @keyframes damageFloat {
+            0% {
+                opacity: 1;
+                transform: translateY(0);
+            }
+            100% {
+                opacity: 0;
+                transform: translateY(-50px);
+            }
         }
 
         .shop {
@@ -230,6 +274,7 @@
 
         .shop-item.selected {
             border-color: #2ecc71;
+            background: #d5f4e6;
         }
 
         .shop-item .icon {
@@ -262,6 +307,12 @@
 
         .phase-indicator.battle {
             background: #e74c3c;
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
         }
 
         .waiting {
@@ -276,7 +327,7 @@
             color: white;
             padding: 15px;
             border-radius: 10px;
-            max-height: 200px;
+            max-height: 150px;
             overflow-y: auto;
             margin-top: 20px;
             font-family: monospace;
@@ -320,7 +371,6 @@
     <div class="container">
         <h1>⚔️ AutoChess Battle Arena</h1>
 
-        <!-- START SCREEN -->
         <div id="start-screen" class="screen active">
             <div class="input-group">
                 <label>Enter Your Player Name:</label>
@@ -333,7 +383,6 @@
             <p class="info-text">Open in 2 tabs to test multiplayer!</p>
         </div>
 
-        <!-- LOBBY SCREEN -->
         <div id="lobby-screen" class="screen">
             <div id="matchmaking-status">
                 <h2>🔍 Finding Opponent...</h2>
@@ -343,27 +392,30 @@
             </div>
         </div>
 
-        <!-- GAME SCREEN -->
         <div id="game-screen" class="screen">
             <div class="phase-indicator" id="phase-indicator">Preparation Phase</div>
             
             <div class="game-info">
                 <div class="player-info">
                     <h3 id="player1-name">You</h3>
-                    <div class="health">❤️ <span id="player1-health">20</span></div>
+                    <div class="health">❤️ <span id="player1-health">10</span></div>
                     <div class="gold">💰 <span id="player1-gold">10</span></div>
+                    <div class="troop-cap">Troops: <span id="player1-troops">0</span>/<span id="player1-cap">2</span></div>
                 </div>
                 <div class="player-info">
                     <div style="font-size: 14px; color: #7f8c8d;">Round <span id="round-number">1</span></div>
                 </div>
                 <div class="player-info">
                     <h3 id="player2-name">Opponent</h3>
-                    <div class="health">❤️ <span id="player2-health">20</span></div>
+                    <div class="health">❤️ <span id="player2-health">10</span></div>
                     <div class="gold">💰 <span id="player2-gold">10</span></div>
+                    <div class="troop-cap">Troops: <span id="player2-troops">0</span>/<span id="player2-cap">2</span></div>
                 </div>
             </div>
 
-            <div class="board" id="board"></div>
+            <div class="battle-arena" id="battle-arena">
+                <div class="board" id="board"></div>
+            </div>
 
             <div id="waiting-message" class="waiting" style="display: none;">
                 Waiting for opponent to finish their turn...
@@ -378,18 +430,7 @@
                 <button id="ready-btn" class="small-btn" onclick="readyForBattle()">✅ Ready for Battle!</button>
             </div>
 
-            <div class="battle-log" id="battle-log" style="display: none;"></div>
-        </div>
-
-        <!-- REPLAY SCREEN -->
-        <div id="replay-screen" class="screen">
-            <h2 style="text-align: center; margin-bottom: 20px;">⚔️ Battle Replay</h2>
-            <div class="board" id="replay-board"></div>
-            <div class="battle-log" id="replay-log"></div>
-            <div class="actions">
-                <button class="small-btn" onclick="replayBattle()">▶️ Replay Battle</button>
-                <button class="small-btn" onclick="nextRound()">➡️ Next Round</button>
-            </div>
+            <div class="battle-log" id="battle-log"></div>
         </div>
     </div>
 
@@ -400,8 +441,8 @@
         let db, gameId, playerId, playerNumber;
         let selectedUnit = null;
         let gameState = {
-            player1: { health: 20, gold: 10, board: [], ready: false },
-            player2: { health: 20, gold: 10, board: [], ready: false },
+            player1: { health: 10, gold: 10, board: [], ready: false },
+            player2: { health: 10, gold: 10, board: [], ready: false },
             phase: 'prep',
             round: 1,
             battleLog: []
@@ -417,6 +458,13 @@
             { id: 'ninja', name: 'Ninja', icon: '🥷', cost: 4, hp: 12, atk: 8, spd: 5 },
             { id: 'dragon', name: 'Dragon', icon: '🐉', cost: 6, hp: 20, atk: 12, spd: 3 }
         ];
+
+        function getTroopCap(round) {
+            if (round === 1) return 2;
+            if (round === 2) return 3;
+            if (round === 3) return 4;
+            return 5;
+        }
 
         function showScreen(screenId) {
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
@@ -530,7 +578,7 @@
                     <div>${unit.name}</div>
                     <div class="cost">💰 ${unit.cost}</div>
                     <div style="font-size: 10px; color: #7f8c8d;">
-                        HP: ${unit.hp} | ATK: ${unit.atk}
+                        HP: ${unit.hp} | ATK: ${unit.atk} | SPD: ${unit.spd}
                     </div>
                 `;
                 shopItems.appendChild(item);
@@ -551,6 +599,12 @@
             const myKey = 'player' + playerNumber;
             const myGold = gameState[myKey].gold;
             const myBoard = gameState[myKey].board;
+            const cap = getTroopCap(gameState.round);
+
+            if (myBoard.length >= cap) {
+                alert(`Troop cap reached! Maximum ${cap} troops this round.`);
+                return;
+            }
 
             if (myGold < selectedUnit.cost) {
                 alert('Not enough gold!');
@@ -592,6 +646,66 @@
             }
         }
 
+        function getCellPosition(index) {
+            const cells = document.querySelectorAll('#board .cell');
+            const cell = cells[index];
+            const rect = cell.getBoundingClientRect();
+            const arenaRect = document.getElementById('battle-arena').getBoundingClientRect();
+            return {
+                x: rect.left - arenaRect.left + rect.width / 2,
+                y: rect.top - arenaRect.top + rect.height / 2
+            };
+        }
+
+        function createAnimatedUnit(unit, pos) {
+            const elem = document.createElement('div');
+            elem.className = 'animated-unit';
+            elem.textContent = unit.icon;
+            elem.style.left = pos.x + 'px';
+            elem.style.top = pos.y + 'px';
+            elem.style.transform = 'translate(-50%, -50%)';
+            document.getElementById('battle-arena').appendChild(elem);
+            return elem;
+        }
+
+        function showDamage(pos, damage) {
+            const elem = document.createElement('div');
+            elem.className = 'damage-text';
+            elem.textContent = '-' + damage;
+            elem.style.left = pos.x + 'px';
+            elem.style.top = pos.y + 'px';
+            elem.style.transform = 'translate(-50%, -50%)';
+            document.getElementById('battle-arena').appendChild(elem);
+            setTimeout(() => elem.remove(), 1000);
+        }
+
+        async function animateAttack(attacker, attackerPos, target, targetPos, damage) {
+            const attackElem = createAnimatedUnit(attacker, attackerPos);
+            
+            await new Promise(resolve => {
+                setTimeout(() => {
+                    attackElem.style.left = targetPos.x + 'px';
+                    attackElem.style.top = targetPos.y + 'px';
+                    resolve();
+                }, 50);
+            });
+
+            await new Promise(resolve => setTimeout(resolve, 500));
+
+            showDamage(targetPos, damage);
+            
+            await new Promise(resolve => {
+                setTimeout(() => {
+                    attackElem.style.left = attackerPos.x + 'px';
+                    attackElem.style.top = attackerPos.y + 'px';
+                    resolve();
+                }, 50);
+            });
+
+            await new Promise(resolve => setTimeout(resolve, 500));
+            attackElem.remove();
+        }
+
         async function simulateBattle() {
             gameState.phase = 'battle';
             currentBattleLog = [];
@@ -602,6 +716,7 @@
             let allUnits = [...p1Units, ...p2Units].sort((a, b) => b.spd - a.spd);
 
             currentBattleLog.push('⚔️ Battle Start!');
+            displayBattleLog();
 
             while (p1Units.filter(u => u.currentHp > 0).length > 0 && 
                    p2Units.filter(u => u.currentHp > 0).length > 0) {
@@ -615,6 +730,12 @@
                     if (aliveEnemies.length === 0) break;
 
                     const target = aliveEnemies[Math.floor(Math.random() * aliveEnemies.length)];
+                    
+                    const attackerPos = getCellPosition(unit.pos);
+                    const targetPos = getCellPosition(target.pos);
+                    
+                    await animateAttack(unit, attackerPos, target, targetPos, unit.atk);
+                    
                     target.currentHp -= unit.atk;
 
                     currentBattleLog.push(
@@ -625,20 +746,23 @@
                         currentBattleLog.push(`💀 ${target.icon} ${target.name} defeated!`);
                     }
 
-                    await new Promise(resolve => setTimeout(resolve, 500));
                     displayBattleLog();
+                    await new Promise(resolve => setTimeout(resolve, 200));
                 }
             }
 
             const p1Alive = p1Units.filter(u => u.currentHp > 0).length;
             const p2Alive = p2Units.filter(u => u.currentHp > 0).length;
 
+            let damageDealt = 0;
             if (p1Alive > p2Alive) {
-                gameState.player2.health -= 3;
-                currentBattleLog.push('🏆 Player 1 wins this round!');
+                damageDealt = p1Alive + 1;
+                gameState.player2.health -= damageDealt;
+                currentBattleLog.push(`🏆 Player 1 wins! ${damageDealt} damage dealt (${p1Alive} survivors + 1)`);
             } else if (p2Alive > p1Alive) {
-                gameState.player1.health -= 3;
-                currentBattleLog.push('🏆 Player 2 wins this round!');
+                damageDealt = p2Alive + 1;
+                gameState.player1.health -= damageDealt;
+                currentBattleLog.push(`🏆 Player 2 wins! ${damageDealt} damage dealt (${p2Alive} survivors + 1)`);
             } else {
                 currentBattleLog.push('🤝 Draw! No damage dealt.');
             }
@@ -650,72 +774,19 @@
                 currentBattleLog.push(`🎉 ${winner} wins the game!`);
                 gameState.phase = 'ended';
             } else {
-                gameState.phase = 'replay';
+                setTimeout(() => {
+                    nextRound();
+                }, 3000);
             }
 
+            displayBattleLog();
             await db.collection('games').doc(gameId).update({ state: gameState });
-            showReplay();
         }
 
         function displayBattleLog() {
             const logDiv = document.getElementById('battle-log');
-            logDiv.style.display = 'block';
             logDiv.innerHTML = currentBattleLog.map(log => `<div>${log}</div>`).join('');
             logDiv.scrollTop = logDiv.scrollHeight;
-        }
-
-        function showReplay() {
-            showScreen('replay-screen');
-            const replayLog = document.getElementById('replay-log');
-            replayLog.innerHTML = gameState.battleLog.map(log => `<div>${log}</div>`).join('');
-            updateReplayBoard();
-        }
-
-        function updateReplayBoard() {
-            const board = document.getElementById('replay-board');
-            board.innerHTML = '';
-            
-            for (let i = 0; i < 10; i++) {
-                const cell = document.createElement('div');
-                cell.className = 'cell';
-                
-                const p1Unit = gameState.player1.board.find(u => u.pos === i);
-                const p2Unit = gameState.player2.board.find(u => u.pos === i);
-                
-                if (p1Unit) {
-                    cell.classList.add('occupied');
-                    cell.innerHTML = `
-                        <div class="unit">${p1Unit.icon}</div>
-                        <div class="unit-name">${p1Unit.name}</div>
-                    `;
-                } else if (p2Unit) {
-                    cell.classList.add('enemy');
-                    cell.innerHTML = `
-                        <div class="unit">${p2Unit.icon}</div>
-                        <div class="unit-name">${p2Unit.name}</div>
-                    `;
-                }
-                
-                board.appendChild(cell);
-            }
-        }
-
-        function replayBattle() {
-            const replayLog = document.getElementById('replay-log');
-            replayLog.innerHTML = '';
-            
-            let i = 0;
-            const interval = setInterval(() => {
-                if (i >= gameState.battleLog.length) {
-                    clearInterval(interval);
-                    return;
-                }
-                const logEntry = document.createElement('div');
-                logEntry.textContent = gameState.battleLog[i];
-                replayLog.appendChild(logEntry);
-                replayLog.scrollTop = replayLog.scrollHeight;
-                i++;
-            }, 500);
         }
 
         async function nextRound() {
@@ -727,23 +798,22 @@
             gameState.round++;
             gameState.player1.gold = 10 + gameState.round;
             gameState.player2.gold = 10 + gameState.round;
-            gameState.player1.board = [];
-            gameState.player2.board = [];
             gameState.player1.ready = false;
             gameState.player2.ready = false;
             gameState.phase = 'prep';
             gameState.battleLog = [];
 
             await db.collection('games').doc(gameId).update({ state: gameState });
-            showScreen('game-screen');
             updateGameUI();
         }
 
         function updateGameUI() {
+            const cap = getTroopCap(gameState.round);
+            
             document.getElementById('phase-indicator').textContent = 
-                gameState.phase === 'prep' ? 'Preparation Phase' : 
-                gameState.phase === 'battle' ? 'Battle in Progress!' :
-                gameState.phase === 'replay' ? 'Battle Ended - View Replay' : 'Game Ended';
+                gameState.phase === 'prep' ? 'Preparation Phase - Place Your Troops!' : 
+                gameState.phase === 'battle' ? '⚔️ BATTLE IN PROGRESS!' :
+                'Game Ended';
             
             document.getElementById('phase-indicator').className = 
                 'phase-indicator' + (gameState.phase === 'battle' ? ' battle' : '');
@@ -753,6 +823,10 @@
             document.getElementById('player2-health').textContent = gameState.player2.health;
             document.getElementById('player1-gold').textContent = gameState.player1.gold;
             document.getElementById('player2-gold').textContent = gameState.player2.gold;
+            document.getElementById('player1-troops').textContent = gameState.player1.board.length;
+            document.getElementById('player1-cap').textContent = cap;
+            document.getElementById('player2-troops').textContent = gameState.player2.board.length;
+            document.getElementById('player2-cap').textContent = cap;
 
             const readyBtn = document.getElementById('ready-btn');
             readyBtn.disabled = gameState.phase !== 'prep';
@@ -774,14 +848,24 @@
                 cell.innerHTML = '';
 
                 const myKey = 'player' + playerNumber;
+                const opponentKey = playerNumber === 1 ? 'player2' : 'player1';
+                
                 const myUnit = gameState[myKey].board.find(u => u.pos === i);
+                const opponentUnit = gameState[opponentKey].board.find(u => u.pos === i);
 
                 if (myUnit) {
                     cell.classList.add('occupied');
                     cell.innerHTML = `
                         <div class="unit">${myUnit.icon}</div>
                         <div class="unit-name">${myUnit.name}</div>
-                        <div class="unit-hp">HP: ${myUnit.currentHp}</div>
+                        <div class="unit-hp">HP: ${myUnit.currentHp}/${myUnit.hp}</div>
+                    `;
+                } else if (opponentUnit && gameState.phase === 'battle') {
+                    cell.classList.add('enemy');
+                    cell.innerHTML = `
+                        <div class="unit">${opponentUnit.icon}</div>
+                        <div class="unit-name">${opponentUnit.name}</div>
+                        <div class="unit-hp">HP: ${opponentUnit.currentHp}/${opponentUnit.hp}</div>
                     `;
                 }
             });
