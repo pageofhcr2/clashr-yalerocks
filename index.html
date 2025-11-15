@@ -1,0 +1,787 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clash Royale Clone</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            overflow: hidden;
+            background: linear-gradient(to bottom, #1e3a8a, #7e22ce);
+        }
+
+        #game-container {
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #menu-screen, #matchmaking-screen, #gameover-screen {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: white;
+        }
+
+        #menu-screen h1 {
+            font-size: 4rem;
+            margin-bottom: 2rem;
+            text-shadow: 3px 3px 6px rgba(0,0,0,0.5);
+        }
+
+        .btn {
+            background: #eab308;
+            border: none;
+            padding: 1.5rem 3rem;
+            font-size: 1.5rem;
+            font-weight: bold;
+            border-radius: 12px;
+            cursor: pointer;
+            color: #1f2937;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            transition: all 0.2s;
+        }
+
+        .btn:hover {
+            background: #ca8a04;
+            transform: scale(1.05);
+        }
+
+        .btn:disabled {
+            background: #6b7280;
+            cursor: not-allowed;
+            opacity: 0.5;
+        }
+
+        #top-bar, #bottom-bar {
+            height: 60px;
+            padding: 0 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            color: white;
+            font-weight: bold;
+        }
+
+        #top-bar {
+            background: #7f1d1d;
+        }
+
+        #bottom-bar {
+            background: #1e3a8a;
+        }
+
+        .tower-info {
+            display: flex;
+            gap: 15px;
+        }
+
+        #game-board {
+            flex: 1;
+            position: relative;
+            background: linear-gradient(to bottom, #166534, #15803d, #16a34a);
+            cursor: crosshair;
+            overflow: hidden;
+        }
+
+        .river {
+            position: absolute;
+            top: 50%;
+            left: 0;
+            right: 0;
+            height: 8px;
+            background: #3b82f6;
+            transform: translateY(-50%);
+            box-shadow: 0 2px 8px rgba(59, 130, 246, 0.5);
+        }
+
+        .tower {
+            position: absolute;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+
+        .tower-red {
+            background: #dc2626;
+        }
+
+        .tower-blue {
+            background: #2563eb;
+        }
+
+        .troop {
+            position: absolute;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+            transition: all 0.1s;
+        }
+
+        .troop-blue {
+            background: #3b82f6;
+        }
+
+        .troop-red {
+            background: #ef4444;
+        }
+
+        .hp-bar {
+            position: absolute;
+            bottom: -8px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 36px;
+            height: 4px;
+            background: #1f2937;
+            border-radius: 2px;
+        }
+
+        .hp-fill {
+            height: 100%;
+            background: #22c55e;
+            border-radius: 2px;
+            transition: width 0.2s;
+        }
+
+        #card-deck {
+            height: 140px;
+            background: #111827;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            padding: 0 20px;
+        }
+
+        .card {
+            width: 90px;
+            height: 110px;
+            background: #7c3aed;
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+
+        .card:hover:not(.disabled) {
+            background: #6d28d9;
+            transform: translateY(-5px);
+        }
+
+        .card.selected {
+            background: #eab308;
+            transform: scale(1.1) translateY(-10px);
+        }
+
+        .card.disabled {
+            background: #4b5563;
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .card-icon {
+            font-size: 2.5rem;
+            margin-bottom: 5px;
+        }
+
+        .card-name {
+            font-size: 0.75rem;
+            color: white;
+            font-weight: bold;
+        }
+
+        .card-cost {
+            font-size: 0.7rem;
+            color: #c084fc;
+            margin-top: 2px;
+        }
+
+        #elixir-display {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 1.5rem;
+            color: #c084fc;
+            font-weight: bold;
+        }
+
+        .deploy-zone {
+            position: absolute;
+            inset: 0;
+            background: rgba(59, 130, 246, 0.2);
+            pointer-events: none;
+        }
+
+        .loading {
+            font-size: 2rem;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .error-msg {
+            color: #fca5a5;
+            margin-top: 1rem;
+            font-size: 1rem;
+        }
+
+        .info-text {
+            color: #d1d5db;
+            margin-top: 1rem;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <!-- Menu Screen -->
+        <div id="menu-screen">
+            <h1>⚔️ Clash Royale Clone 👑</h1>
+            <button class="btn" onclick="startMatchmaking()">🎮 Find Match (1v1)</button>
+            <div class="info-text">Click to find an opponent and start battling!</div>
+            <div id="menu-error" class="error-msg"></div>
+        </div>
+
+        <!-- Matchmaking Screen -->
+        <div id="matchmaking-screen" class="hidden">
+            <div class="loading">🔍 Finding opponent...</div>
+            <div class="info-text">Please wait</div>
+        </div>
+
+        <!-- Game Over Screen -->
+        <div id="gameover-screen" class="hidden">
+            <h1 id="winner-text"></h1>
+            <button class="btn" onclick="returnToMenu()">Return to Menu</button>
+        </div>
+
+        <!-- Game Screen -->
+        <div id="game-screen" class="hidden" style="display: flex; flex-direction: column; width: 100%; height: 100%;">
+            <!-- Top Bar -->
+            <div id="top-bar">
+                <span>Opponent</span>
+                <div class="tower-info">
+                    <span id="top-king">👑 500</span>
+                    <span id="top-left">🏰 250</span>
+                    <span id="top-right">🏰 250</span>
+                </div>
+            </div>
+
+            <!-- Game Board -->
+            <div id="game-board" onclick="deployTroop(event)">
+                <div class="river"></div>
+                <div id="troops-container"></div>
+                <div id="deploy-indicator"></div>
+            </div>
+
+            <!-- Bottom Bar -->
+            <div id="bottom-bar">
+                <span id="player-info">You</span>
+                <div class="tower-info">
+                    <span id="bottom-king">👑 500</span>
+                    <span id="bottom-left">🏰 250</span>
+                    <span id="bottom-right">🏰 250</span>
+                </div>
+            </div>
+
+            <!-- Card Deck -->
+            <div id="card-deck">
+                <div id="elixir-display">⚡ <span id="elixir-count">5</span>/10</div>
+                <div class="card" data-card="knight" onclick="selectCard('knight')">
+                    <div class="card-icon">🛡️</div>
+                    <div class="card-name">Knight</div>
+                    <div class="card-cost">3 ⚡</div>
+                </div>
+                <div class="card" data-card="archer" onclick="selectCard('archer')">
+                    <div class="card-icon">🏹</div>
+                    <div class="card-name">Archer</div>
+                    <div class="card-cost">3 ⚡</div>
+                </div>
+                <div class="card" data-card="giant" onclick="selectCard('giant')">
+                    <div class="card-icon">👹</div>
+                    <div class="card-name">Giant</div>
+                    <div class="card-cost">5 ⚡</div>
+                </div>
+                <div class="card" data-card="wizard" onclick="selectCard('wizard')">
+                    <div class="card-icon">🧙</div>
+                    <div class="card-name">Wizard</div>
+                    <div class="card-cost">5 ⚡</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        // Firebase Configuration - REPLACE WITH YOUR CONFIG
+const firebaseConfig = {
+  apiKey: "AIzaSyCvLSW4EvEFKlIamsL3lBV3GeDAtkvhhTo",
+  authDomain: "tuffmangophonk-fb5bc.firebaseapp.com",
+  projectId: "tuffmangophonk-fb5bc",
+  storageBucket: "tuffmangophonk-fb5bc.firebasestorage.app",
+  messagingSenderId: "199500063543",
+  appId: "1:199500063543:web:0c91b7db5c4910b5a5b0b2",
+};
+
+        // Import Firebase
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getFirestore, collection, addDoc, doc, updateDoc, onSnapshot, query, where, getDocs, setDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+
+        // Game Constants
+        const CARDS = {
+            knight: { name: 'Knight', cost: 3, hp: 150, damage: 10, speed: 1.5, range: 50, icon: '🛡️' },
+            archer: { name: 'Archer', cost: 3, hp: 50, damage: 8, speed: 2, range: 150, icon: '🏹' },
+            giant: { name: 'Giant', cost: 5, hp: 300, damage: 15, speed: 0.8, range: 50, icon: '👹' },
+            wizard: { name: 'Wizard', cost: 5, hp: 80, damage: 25, speed: 1.5, range: 150, icon: '🧙' }
+        };
+
+        // Game State
+        let db;
+        let playerId = `player_${Math.random().toString(36).substr(2, 9)}`;
+        let gameId = null;
+        let playerSide = null;
+        let elixir = 5;
+        let selectedCard = null;
+        let troops = [];
+        let towers = {
+            bottom: { left: 250, center: 500, right: 250 },
+            top: { left: 250, center: 500, right: 250 }
+        };
+        let gameLoop = null;
+        let unsubscribe = null;
+
+        // Initialize Firebase
+        async function initFirebase() {
+            try {
+                const app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                console.log('Firebase initialized');
+            } catch (error) {
+                document.getElementById('menu-error').textContent = 'Failed to initialize Firebase. Check your config.';
+                console.error('Firebase init error:', error);
+            }
+        }
+
+        // Start matchmaking
+        window.startMatchmaking = async function() {
+            if (!db) {
+                document.getElementById('menu-error').textContent = 'Firebase not initialized';
+                return;
+            }
+
+            showScreen('matchmaking');
+
+            try {
+                const gamesRef = collection(db, 'games');
+                const q = query(gamesRef, where('status', '==', 'waiting'));
+                const snapshot = await getDocs(q);
+
+                if (!snapshot.empty) {
+                    // Join existing game
+                    const gameDoc = snapshot.docs[0];
+                    gameId = gameDoc.id;
+                    await updateDoc(doc(db, 'games', gameId), {
+                        player2: playerId,
+                        status: 'playing'
+                    });
+                    playerSide = 'top';
+                    startGame();
+                } else {
+                    // Create new game
+                    const docRef = await addDoc(collection(db, 'games'), {
+                        player1: playerId,
+                        player2: null,
+                        status: 'waiting',
+                        towers: {
+                            bottom: { left: 250, center: 500, right: 250 },
+                            top: { left: 250, center: 500, right: 250 }
+                        },
+                        troops: { bottom: [], top: [] },
+                        createdAt: Date.now()
+                    });
+                    gameId = docRef.id;
+                    playerSide = 'bottom';
+
+                    // Wait for opponent
+                    unsubscribe = onSnapshot(doc(db, 'games', gameId), (snapshot) => {
+                        const data = snapshot.data();
+                        if (data && data.status === 'playing') {
+                            if (unsubscribe) unsubscribe();
+                            startGame();
+                        }
+                    });
+                }
+            } catch (error) {
+                console.error('Matchmaking error:', error);
+                showScreen('menu');
+                document.getElementById('menu-error').textContent = 'Matchmaking failed: ' + error.message;
+            }
+        };
+
+        // Start game
+        function startGame() {
+            showScreen('game');
+            document.getElementById('player-info').textContent = `You (${playerSide})`;
+            
+            // Start elixir generation
+            setInterval(() => {
+                if (elixir < 10) {
+                    elixir++;
+                    updateElixirDisplay();
+                }
+            }, 2000);
+
+            // Listen for game updates
+            unsubscribe = onSnapshot(doc(db, 'games', gameId), (snapshot) => {
+                const data = snapshot.data();
+                if (!data) return;
+
+                // Update towers
+                if (data.towers) {
+                    towers = data.towers;
+                    updateTowerDisplay();
+                }
+
+                // Check win condition
+                if (data.towers.top.center <= 0) {
+                    endGame('Bottom player wins! 🎉');
+                } else if (data.towers.bottom.center <= 0) {
+                    endGame('Top player wins! 🎉');
+                }
+
+                // Update opponent troops
+                const opponentSide = playerSide === 'bottom' ? 'top' : 'bottom';
+                if (data.troops && data.troops[opponentSide]) {
+                    const myTroops = troops.filter(t => t.owner === playerSide);
+                    troops = [...myTroops, ...data.troops[opponentSide]];
+                }
+            });
+
+            // Start game loop
+            gameLoop = setInterval(updateGame, 50);
+            drawTowers();
+        }
+
+        // Update game
+        function updateGame() {
+            const board = document.getElementById('game-board');
+            const boardRect = board.getBoundingClientRect();
+
+            troops = troops.filter(troop => {
+                if (troop.hp <= 0) return false;
+
+                // Move troop
+                const direction = troop.owner === 'bottom' ? -1 : 1;
+                troop.y += troop.speed * direction;
+
+                // Check if out of bounds
+                if (troop.y < 0 || troop.y > boardRect.height) return false;
+
+                // Attack towers
+                attackTowers(troop, boardRect);
+
+                // Attack other troops
+                troops.forEach(other => {
+                    if (other.id !== troop.id && other.owner !== troop.owner) {
+                        const dist = Math.hypot(troop.x - other.x, troop.y - other.y);
+                        if (dist < troop.range) {
+                            other.hp -= troop.damage * 0.1;
+                        }
+                    }
+                });
+
+                return true;
+            });
+
+            renderTroops();
+        }
+
+        // Attack towers
+        function attackTowers(troop, boardRect) {
+            const targetSide = troop.owner === 'bottom' ? 'top' : 'bottom';
+            const centerX = boardRect.width / 2;
+            
+            let targetPos;
+            if (targetSide === 'top') {
+                if (troop.y < 100) {
+                    if (troop.x < centerX - 100 && towers.top.left > 0) {
+                        towers.top.left = Math.max(0, towers.top.left - troop.damage * 0.05);
+                        targetPos = 'left';
+                    } else if (troop.x > centerX + 100 && towers.top.right > 0) {
+                        towers.top.right = Math.max(0, towers.top.right - troop.damage * 0.05);
+                        targetPos = 'right';
+                    } else if (towers.top.center > 0 && towers.top.left <= 0 && towers.top.right <= 0) {
+                        towers.top.center = Math.max(0, towers.top.center - troop.damage * 0.05);
+                        targetPos = 'center';
+                    }
+                }
+            } else {
+                if (troop.y > boardRect.height - 100) {
+                    if (troop.x < centerX - 100 && towers.bottom.left > 0) {
+                        towers.bottom.left = Math.max(0, towers.bottom.left - troop.damage * 0.05);
+                        targetPos = 'left';
+                    } else if (troop.x > centerX + 100 && towers.bottom.right > 0) {
+                        towers.bottom.right = Math.max(0, towers.bottom.right - troop.damage * 0.05);
+                        targetPos = 'right';
+                    } else if (towers.bottom.center > 0 && towers.bottom.left <= 0 && towers.bottom.right <= 0) {
+                        towers.bottom.center = Math.max(0, towers.bottom.center - troop.damage * 0.05);
+                        targetPos = 'center';
+                    }
+                }
+            }
+
+            if (targetPos) {
+                syncTowersToFirestore();
+                updateTowerDisplay();
+            }
+        }
+
+        // Sync towers to Firestore
+        async function syncTowersToFirestore() {
+            if (!db || !gameId) return;
+            try {
+                await updateDoc(doc(db, 'games', gameId), {
+                    [`towers.${playerSide}`]: towers[playerSide]
+                });
+            } catch (error) {
+                console.error('Error syncing towers:', error);
+            }
+        }
+
+        // Deploy troop
+        window.deployTroop = async function(event) {
+            if (!selectedCard) return;
+            
+            const card = CARDS[selectedCard];
+            if (elixir < card.cost) return;
+
+            const board = document.getElementById('game-board');
+            const rect = board.getBoundingClientRect();
+            const x = event.clientX - rect.left;
+            const y = event.clientY - rect.top;
+
+            // Check deployment zone
+            if (playerSide === 'bottom' && y < rect.height / 2) return;
+            if (playerSide === 'top' && y > rect.height / 2) return;
+
+            const newTroop = {
+                id: `${playerId}_${Date.now()}_${Math.random()}`,
+                cardId: selectedCard,
+                x,
+                y,
+                hp: card.hp,
+                maxHp: card.hp,
+                damage: card.damage,
+                speed: card.speed,
+                range: card.range,
+                owner: playerSide,
+                icon: card.icon
+            };
+
+            troops.push(newTroop);
+            elixir -= card.cost;
+            updateElixirDisplay();
+            selectedCard = null;
+            updateCardSelection();
+
+            // Sync to Firestore
+            try {
+                const myTroops = troops.filter(t => t.owner === playerSide);
+                await updateDoc(doc(db, 'games', gameId), {
+                    [`troops.${playerSide}`]: myTroops
+                });
+            } catch (error) {
+                console.error('Error syncing troops:', error);
+            }
+        };
+
+        // Select card
+        window.selectCard = function(cardId) {
+            const card = CARDS[cardId];
+            if (elixir < card.cost) return;
+            
+            selectedCard = cardId;
+            updateCardSelection();
+        };
+
+        // Update card selection UI
+        function updateCardSelection() {
+            document.querySelectorAll('.card').forEach(card => {
+                const cardId = card.getAttribute('data-card');
+                const cardData = CARDS[cardId];
+                
+                card.classList.remove('selected');
+                if (elixir < cardData.cost) {
+                    card.classList.add('disabled');
+                } else {
+                    card.classList.remove('disabled');
+                }
+
+                if (selectedCard === cardId) {
+                    card.classList.add('selected');
+                }
+            });
+
+            // Update deploy indicator
+            const indicator = document.getElementById('deploy-indicator');
+            if (selectedCard) {
+                const board = document.getElementById('game-board');
+                const rect = board.getBoundingClientRect();
+                indicator.className = 'deploy-zone';
+                indicator.style.background = 'rgba(59, 130, 246, 0.2)';
+                if (playerSide === 'bottom') {
+                    indicator.style.top = '50%';
+                    indicator.style.bottom = '0';
+                } else {
+                    indicator.style.top = '0';
+                    indicator.style.bottom = '50%';
+                }
+            } else {
+                indicator.className = '';
+                indicator.style.background = 'none';
+            }
+        }
+
+        // Render troops
+        function renderTroops() {
+            const container = document.getElementById('troops-container');
+            container.innerHTML = '';
+
+            troops.forEach(troop => {
+                const troopEl = document.createElement('div');
+                troopEl.className = `troop ${troop.owner === playerSide ? 'troop-blue' : 'troop-red'}`;
+                troopEl.style.left = troop.x + 'px';
+                troopEl.style.top = troop.y + 'px';
+                troopEl.innerHTML = troop.icon;
+
+                const hpBar = document.createElement('div');
+                hpBar.className = 'hp-bar';
+                const hpFill = document.createElement('div');
+                hpFill.className = 'hp-fill';
+                hpFill.style.width = (troop.hp / troop.maxHp * 100) + '%';
+                hpBar.appendChild(hpFill);
+                troopEl.appendChild(hpBar);
+
+                container.appendChild(troopEl);
+            });
+        }
+
+        // Draw towers
+        function drawTowers() {
+            const board = document.getElementById('game-board');
+            const rect = board.getBoundingClientRect();
+            const centerX = rect.width / 2;
+
+            // Top towers
+            createTowerElement('top-left-tower', 80, 60, 64, 64, 'tower tower-red', '🏰');
+            createTowerElement('top-center-tower', centerX - 40, 20, 80, 80, 'tower tower-red', '👑');
+            createTowerElement('top-right-tower', rect.width - 144, 60, 64, 64, 'tower tower-red', '🏰');
+
+            // Bottom towers
+            createTowerElement('bottom-left-tower', 80, rect.height - 124, 64, 64, 'tower tower-blue', '🏰');
+            createTowerElement('bottom-center-tower', centerX - 40, rect.height - 100, 80, 80, 'tower tower-blue', '👑');
+            createTowerElement('bottom-right-tower', rect.width - 144, rect.height - 124, 64, 64, 'tower tower-blue', '🏰');
+        }
+
+        function createTowerElement(id, left, top, width, height, className, icon) {
+            let tower = document.getElementById(id);
+            if (!tower) {
+                tower = document.createElement('div');
+                tower.id = id;
+                document.getElementById('game-board').appendChild(tower);
+            }
+            tower.className = className;
+            tower.style.left = left + 'px';
+            tower.style.top = top + 'px';
+            tower.style.width = width + 'px';
+            tower.style.height = height + 'px';
+            tower.innerHTML = icon;
+        }
+
+        // Update displays
+        function updateElixirDisplay() {
+            document.getElementById('elixir-count').textContent = elixir;
+            updateCardSelection();
+        }
+
+        function updateTowerDisplay() {
+            document.getElementById('top-king').textContent = `👑 ${Math.round(towers.top.center)}`;
+            document.getElementById('top-left').textContent = `🏰 ${Math.round(towers.top.left)}`;
+            document.getElementById('top-right').textContent = `🏰 ${Math.round(towers.top.right)}`;
+            document.getElementById('bottom-king').textContent = `👑 ${Math.round(towers.bottom.center)}`;
+            document.getElementById('bottom-left').textContent = `🏰 ${Math.round(towers.bottom.left)}`;
+            document.getElementById('bottom-right').textContent = `🏰 ${Math.round(towers.bottom.right)}`;
+        }
+
+        // End game
+        function endGame(message) {
+            if (gameLoop) clearInterval(gameLoop);
+            if (unsubscribe) unsubscribe();
+            
+            document.getElementById('winner-text').textContent = message;
+            showScreen('gameover');
+        }
+
+        // Return to menu
+        window.returnToMenu = function() {
+            if (gameLoop) clearInterval(gameLoop);
+            if (unsubscribe) unsubscribe();
+            
+            gameId = null;
+            playerSide = null;
+            elixir = 5;
+            selectedCard = null;
+            troops = [];
+            towers = {
+                bottom: { left: 250, center: 500, right: 250 },
+                top: { left: 250, center: 500, right: 250 }
+            };
+            
+            showScreen('menu');
+        };
+
+        // Show screen
+        function showScreen(screen) {
+            document.getElementById('menu-screen').classList.add('hidden');
+            document.getElementById('matchmaking-screen').classList.add('hidden');
+            document.getElementById('gameover-screen').classList.add('hidden');
+            document.getElementById('game-screen').classList.add('hidden');
+            
+            document.getElementById(screen + '-screen').classList.remove('hidden');
+        }
+
+        // Initialize
+        initFirebase();
+    </script>
+</body>
+</html>
