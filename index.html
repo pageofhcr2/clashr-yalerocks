@@ -148,7 +148,7 @@
 
         .board {
             display: grid;
-            grid-template-columns: repeat(4, 70px);
+            grid-template-columns: repeat(5, 70px);
             grid-template-rows: repeat(8, 70px);
             gap: 8px;
             margin: 20px auto;
@@ -190,6 +190,10 @@
             border-color: #2980b9;
         }
 
+        .cell.occupied:hover {
+            background: #5dade2;
+        }
+
         .cell.enemy {
             background: #e74c3c;
             border-color: #c0392b;
@@ -203,6 +207,41 @@
         .cell.disabled:hover {
             transform: none;
             border-color: #bdc3c7;
+        }
+
+        .cell.selected-unit {
+            background: #2ecc71;
+            border-color: #27ae60;
+            animation: pulse 0.5s infinite;
+        }
+
+        .cell.move-target {
+            border-color: #f39c12;
+            background: #fef5e7;
+        }
+
+        .remove-unit-btn {
+            position: absolute;
+            top: 2px;
+            right: 2px;
+            width: 18px;
+            height: 18px;
+            background: #e74c3c;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            font-size: 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+            padding: 0;
+            line-height: 1;
+        }
+
+        .remove-unit-btn:hover {
+            background: #c0392b;
         }
 
         .unit {
