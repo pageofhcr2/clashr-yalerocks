@@ -1163,18 +1163,50 @@
                         const originalPos = originalPositions[u.id];
                         const flippedPos = 39 - originalPos;
                         return {
-                            ...u,
+                            id: u.id,
+                            name: u.name,
+                            icon: u.icon,
+                            cost: u.cost,
+                            hp: u.hp,
+                            atk: u.atk,
+                            walkSpeed: u.walkSpeed,
+                            attackSpeed: u.attackSpeed,
+                            range: u.range,
+                            targets: u.targets,
+                            layer: u.layer,
+                            splash: u.splash,
+                            splashType: u.splashType,
+                            deathDamage: u.deathDamage,
+                            deathSplash: u.deathSplash,
+                            diesOnAttack: u.diesOnAttack,
                             currentHp: u.hp,
-                            pos: flippedPos
+                            pos: flippedPos,
+                            lastAttackTime: 0
                         };
                     });
                     gameState.player2.board = p2Units.filter(u => u.currentHp > 0).map(u => {
                         const originalPos = originalPositions[u.id];
                         const flippedPos = 39 - originalPos;
                         return {
-                            ...u,
+                            id: u.id,
+                            name: u.name,
+                            icon: u.icon,
+                            cost: u.cost,
+                            hp: u.hp,
+                            atk: u.atk,
+                            walkSpeed: u.walkSpeed,
+                            attackSpeed: u.attackSpeed,
+                            range: u.range,
+                            targets: u.targets,
+                            layer: u.layer,
+                            splash: u.splash,
+                            splashType: u.splashType,
+                            deathDamage: u.deathDamage,
+                            deathSplash: u.deathSplash,
+                            diesOnAttack: u.diesOnAttack,
                             currentHp: u.hp,
-                            pos: flippedPos
+                            pos: flippedPos,
+                            lastAttackTime: 0
                         };
                     });
                     gameState.battleLog = currentBattleLog;
@@ -1245,8 +1277,8 @@
             }
 
             gameState.round++;
-            gameState.player1.gold = 4;
-            gameState.player2.gold = 4;
+            gameState.player1.gold += 4;
+            gameState.player2.gold += 4;
             gameState.player1.ready = false;
             gameState.player2.ready = false;
             gameState.phase = 'prep';
