@@ -516,37 +516,43 @@
             { 
                 id: 'barbarian', name: 'Barbarian', icon: '🪓', cost: 5, 
                 hp: 1310, atk: 375, walkSpeed: 0.5, attackSpeed: 0.77, range: 1, 
-                targets: 'ground', layer: 'ground', splash: 0 
+                targets: 'ground', layer: 'ground', splash: 0, deathDamage: 0, deathSplash: 0
             },
             { 
                 id: 'archer', name: 'Archer', icon: '🏹', cost: 3, 
                 hp: 238, atk: 78, walkSpeed: 0.5, attackSpeed: 1.11, range: 5, 
-                targets: 'both', layer: 'ground', splash: 0 
+                targets: 'both', layer: 'ground', splash: 0, deathDamage: 0, deathSplash: 0
             },
             { 
                 id: 'wizard', name: 'Wizard', icon: '🔮', cost: 5, 
                 hp: 356, atk: 133, walkSpeed: 0.5, attackSpeed: 1.4, range: 5, 
-                targets: 'both', layer: 'ground', splash: 2, splashType: 'radius'
+                targets: 'both', layer: 'ground', splash: 2, splashType: 'radius', deathDamage: 0, deathSplash: 0
             },
             { 
                 id: 'giant', name: 'Giant', icon: '🛡️', cost: 5, 
                 hp: 1933, atk: 119, walkSpeed: 0.25, attackSpeed: 1.5, range: 1, 
-                targets: 'ground', layer: 'ground', splash: 0 
+                targets: 'ground', layer: 'ground', splash: 0, deathDamage: 0, deathSplash: 0
             },
             { 
                 id: 'goblin', name: 'Goblin', icon: '🥷', cost: 2, 
                 hp: 316, atk: 188, walkSpeed: 1, attackSpeed: 1.1, range: 1, 
-                targets: 'ground', layer: 'ground', splash: 0 
+                targets: 'ground', layer: 'ground', splash: 0, deathDamage: 0, deathSplash: 0
             },
             { 
                 id: 'dragon', name: 'Dragon', icon: '🐉', cost: 7, 
                 hp: 1900, atk: 175, walkSpeed: 0.5, attackSpeed: 1.25, range: 4, 
-                targets: 'both', layer: 'air', splash: 1, splashType: 'line'
+                targets: 'both', layer: 'air', splash: 1, splashType: 'line', deathDamage: 0, deathSplash: 0
             },
             { 
                 id: 'balloon', name: 'Balloon', icon: '🎈', cost: 5, 
                 hp: 1049, atk: 400, walkSpeed: 0.5, attackSpeed: 2, range: 1, 
-                targets: 'both', layer: 'air', splash: 0 
+                targets: 'both', layer: 'air', splash: 0, deathDamage: 150, deathSplash: 2
+            },
+            { 
+                id: 'wallbreaker', name: 'Wall Breaker', icon: '💣', cost: 2, 
+                hp: 412, atk: 488, walkSpeed: 1, attackSpeed: 1, range: 1, 
+                targets: 'ground', layer: 'ground', splash: 2, splashType: 'radius', 
+                deathDamage: 0, deathSplash: 0, diesOnAttack: true
             }
         ];
 
@@ -1022,7 +1028,39 @@
             }
         }
 
-        function getSplashTargets(attacker, target, allEnemies) {
+        function applyDeathDamage(deadUnit, allEnemies) {
+            if (!deadUnit.deathDamage || deadUnit.deathDamage === 0) return;
+            
+            const deadRow = Math.floor(deadUnit.pos / 5);
+            const deadCol = deadUnit.pos % 5;
+            
+            currentBattleLog.push(`💥 ${deadUnit.icon} death damage activated!`);
+            
+            for (let enemy of allEnemies) {
+                if (enemy.currentHp <= 0) continue;
+                
+                const enemyRow = Math.floor(enemy.pos / 5);
+                const enemyCol = enemy.pos % 5;
+                const dist = Math.sqrt(Math.pow(enemyRow - deadRow, 2) + Math.pow(enemyCol - deadCol, 2));
+                
+                if (dist <= deadUnit.deathSplash) {
+                    enemy.currentHp -= deadUnit.deathDamage;
+                    
+                    const enemyPos = getCellPosition(enemy.pos);
+                    showDamage(enemyPos, deadUnit.deathDamage);
+                    
+                    currentBattleLog.push(
+                        `💥 ${enemy.icon} takes ${deadUnit.deathDamage} death damage! (${Math.max(0, enemy.currentHp)}/${enemy.hp} HP)`
+                    );
+                    
+                    if (enemy.currentHp <= 0) {
+                        currentBattleLog.push(`💀 ${enemy.icon} ${enemy.name} defeated by death damage!`);
+                    }
+                }
+            }
+            
+            displayBattleLog();
+        }
             const targets = [target];
             
             if (!attacker.splash || attacker.splash === 0) return targets;
@@ -1142,11 +1180,19 @@
                                 );
                             }
 
+                            // Check if any targets died and trigger death damage
                             splashTargets.forEach(target => {
                                 if (target.currentHp <= 0) {
                                     currentBattleLog.push(`💀 ${target.icon} ${target.name} defeated!`);
+                                    applyDeathDamage(target, unit.owner === 1 ? p1Units : p2Units);
                                 }
                             });
+
+                            // If unit dies on attack (Wall Breaker)
+                            if (unit.diesOnAttack) {
+                                unit.currentHp = 0;
+                                currentBattleLog.push(`💥 ${unit.icon} ${unit.name} explodes after attacking!`);
+                            }
 
                             displayBattleLog();
                         }
@@ -1179,17 +1225,25 @@
                         currentBattleLog.push('🤝 Draw! No damage dealt.');
                     }
 
-                    // Update surviving units back to gameState, restore HP and original positions
-                    gameState.player1.board = p1Units.filter(u => u.currentHp > 0).map(u => ({
-                        ...u,
-                        currentHp: u.hp, // Restore to full HP
-                        pos: originalPositions[u.id] // Restore original position
-                    }));
-                    gameState.player2.board = p2Units.filter(u => u.currentHp > 0).map(u => ({
-                        ...u,
-                        currentHp: u.hp, // Restore to full HP
-                        pos: originalPositions[u.id] // Restore original position
-                    }));
+                    // Update surviving units back to gameState, restore HP and flip positions
+                    gameState.player1.board = p1Units.filter(u => u.currentHp > 0).map(u => {
+                        const originalPos = originalPositions[u.id];
+                        const flippedPos = 39 - originalPos; // Flip position (0->39, 1->38, etc.)
+                        return {
+                            ...u,
+                            currentHp: u.hp,
+                            pos: flippedPos
+                        };
+                    });
+                    gameState.player2.board = p2Units.filter(u => u.currentHp > 0).map(u => {
+                        const originalPos = originalPositions[u.id];
+                        const flippedPos = 39 - originalPos; // Flip position
+                        return {
+                            ...u,
+                            currentHp: u.hp,
+                            pos: flippedPos
+                        };
+                    });
                     gameState.battleLog = currentBattleLog;
 
                     if (gameState.player1.health <= 0 || gameState.player2.health <= 0) {
