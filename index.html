@@ -600,26 +600,28 @@
 
             const gamesRef = db.collection('games');
             
-            const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+            // Clean up old waiting games
+            const fiveMinutesAgo = firebase.firestore.Timestamp.fromDate(new Date(Date.now() - 5 * 60 * 1000));
             const oldGames = await gamesRef
                 .where('status', '==', 'waiting')
-                .where('createdAt', '<', fiveMinutesAgo)
                 .get();
             
-            oldGames.forEach(doc => {
-                doc.ref.delete();
-            });
+            for (let doc of oldGames.docs) {
+                const data = doc.data();
+                if (data.createdAt && data.createdAt < fiveMinutesAgo) {
+                    await doc.ref.delete();
+                }
+            }
 
+            // Try to find an available game
             const availableGames = await gamesRef
                 .where('status', '==', 'waiting')
-                .orderBy('createdAt', 'asc')
-                .limit(1)
                 .get();
 
-            if (!availableGames.empty) {
-                const game = availableGames.docs[0];
+            for (let game of availableGames.docs) {
                 const gameData = game.data();
                 
+                // Make sure we're not joining our own game
                 if (gameData.player1 !== playerId) {
                     gameId = game.id;
                     playerNumber = 2;
@@ -635,6 +637,7 @@
                 }
             }
             
+            // Create a new game if no available games found
             const newGame = await gamesRef.add({
                 player1: playerId,
                 player1Name: document.getElementById('player-name').value,
