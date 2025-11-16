@@ -693,31 +693,27 @@
 
         function checkPhaseTimer() {
             if (phaseTimer) {
-                clearInterval(phaseTimer);
+                clearTimeout(phaseTimer);
             }
 
             if (gameState.phase === 'prep') {
                 const elapsed = Date.now() - (gameState.phaseStartTime || Date.now());
-                const remaining = Math.max(0, 60000 - elapsed);
+                const remaining = Math.max(0, 30000 - elapsed);
                 
-                if (remaining === 0) {
-                    autoReadyForBattle();
-                } else {
-                    phaseTimer = setTimeout(() => {
+                phaseTimer = setTimeout(() => {
+                    if (gameState.phase === 'prep') {
                         autoReadyForBattle();
-                    }, remaining);
-                }
+                    }
+                }, remaining > 0 ? remaining : 0);
             } else if (gameState.phase === 'battle') {
                 const elapsed = Date.now() - (gameState.phaseStartTime || Date.now());
-                const remaining = Math.max(0, 60000 - elapsed);
+                const remaining = Math.max(0, 30000 - elapsed);
                 
-                if (remaining === 0) {
-                    forceEndBattle();
-                } else {
-                    phaseTimer = setTimeout(() => {
+                phaseTimer = setTimeout(() => {
+                    if (gameState.phase === 'battle') {
                         forceEndBattle();
-                    }, remaining);
-                }
+                    }
+                }, remaining > 0 ? remaining : 0);
             }
         }
 
@@ -726,12 +722,7 @@
             
             const myKey = 'player' + playerNumber;
             if (!gameState[myKey].ready) {
-                gameState[myKey].ready = true;
-                await db.collection('games').doc(gameId).update({ state: gameState });
-            }
-
-            if (gameState.player1.ready && gameState.player2.ready) {
-                await simulateBattle();
+                await readyForBattle();
             }
         }
 
@@ -743,19 +734,24 @@
             
             if (gameState.phase !== 'battle') return;
             
-            currentBattleLog.push('⏰ Battle time limit reached!');
+            console.log('Force ending battle due to timeout');
+            
+            currentBattleLog.push('⏰ Battle time limit reached! Drawing...');
             displayBattleLog();
             
-            // Force end the battle immediately
-            const p1Units = gameState.player1.board;
-            const p2Units = gameState.player2.board;
+            // Get current units from gameState
+            const p1Units = gameState.player1.board || [];
+            const p2Units = gameState.player2.board || [];
             const originalPositions = {};
             
-            p1Units.forEach(u => originalPositions[u.id] = u.pos);
-            p2Units.forEach(u => originalPositions[u.id] = u.pos);
+            [...p1Units, ...p2Units].forEach(u => {
+                if (u.id) originalPositions[u.id] = u.pos;
+            });
             
             const p1Alive = p1Units.filter(u => u.currentHp > 0).length;
             const p2Alive = p2Units.filter(u => u.currentHp > 0).length;
+            
+            console.log(`Force end: P1 alive: ${p1Alive}, P2 alive: ${p2Alive}`);
             
             endBattle(p1Units, p2Units, originalPositions, p1Alive, p2Alive);
         }
