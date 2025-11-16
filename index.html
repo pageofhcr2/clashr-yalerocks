@@ -738,14 +738,26 @@
         function forceEndBattle() {
             if (battleInterval) {
                 clearInterval(battleInterval);
+                battleInterval = null;
             }
+            
+            if (gameState.phase !== 'battle') return;
             
             currentBattleLog.push('⏰ Battle time limit reached!');
             displayBattleLog();
             
-            setTimeout(() => {
-                nextRound();
-            }, 2000);
+            // Force end the battle immediately
+            const p1Units = gameState.player1.board;
+            const p2Units = gameState.player2.board;
+            const originalPositions = {};
+            
+            p1Units.forEach(u => originalPositions[u.id] = u.pos);
+            p2Units.forEach(u => originalPositions[u.id] = u.pos);
+            
+            const p1Alive = p1Units.filter(u => u.currentHp > 0).length;
+            const p2Alive = p2Units.filter(u => u.currentHp > 0).length;
+            
+            endBattle(p1Units, p2Units, originalPositions, p1Alive, p2Alive);
         }
 
         function initBoard() {
