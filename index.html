@@ -459,7 +459,7 @@
                 <div class="player-info">
                     <h3 id="player1-name">You</h3>
                     <div class="health">❤️ <span id="player1-health">10</span></div>
-                    <div class="gold">💰 <span id="player1-gold">10</span></div>
+                    <div class="gold">💰 <span id="player1-gold">4</span></div>
                     <div class="troop-cap">Troops: <span id="player1-troops">0</span>/<span id="player1-cap">2</span></div>
                 </div>
                 <div class="player-info">
@@ -468,7 +468,7 @@
                 <div class="player-info">
                     <h3 id="player2-name">Opponent</h3>
                     <div class="health">❤️ <span id="player2-health">10</span></div>
-                    <div class="gold">💰 <span id="player2-gold">10</span></div>
+                    <div class="gold">💰 <span id="player2-gold">4</span></div>
                     <div class="troop-cap">Troops: <span id="player2-troops">0</span>/<span id="player2-cap">2</span></div>
                 </div>
             </div>
@@ -600,7 +600,6 @@
 
             const gamesRef = db.collection('games');
             
-            // First, clean up old waiting games (older than 5 minutes)
             const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
             const oldGames = await gamesRef
                 .where('status', '==', 'waiting')
@@ -611,7 +610,6 @@
                 doc.ref.delete();
             });
 
-            // Try to find an available game
             const availableGames = await gamesRef
                 .where('status', '==', 'waiting')
                 .orderBy('createdAt', 'asc')
@@ -622,7 +620,6 @@
                 const game = availableGames.docs[0];
                 const gameData = game.data();
                 
-                // Make sure we're not joining our own game
                 if (gameData.player1 !== playerId) {
                     gameId = game.id;
                     playerNumber = 2;
@@ -638,7 +635,6 @@
                 }
             }
             
-            // Create a new game if no available games found
             const newGame = await gamesRef.add({
                 player1: playerId,
                 player1Name: document.getElementById('player-name').value,
@@ -676,15 +672,11 @@
             const board = document.getElementById('board');
             board.innerHTML = '';
             
-            // 5x8 board = 40 cells
-            // Player 1 controls cells 0-19 (first 4 rows)
-            // Player 2 controls cells 20-39 (last 4 rows)
             for (let i = 0; i < 40; i++) {
                 const cell = document.createElement('div');
                 cell.className = 'cell';
                 cell.dataset.index = i;
                 
-                // Add zone indicators - first 20 cells for player 1, last 20 for player 2
                 if (i < 20) {
                     cell.classList.add('player1-zone');
                 } else {
@@ -694,10 +686,8 @@
                 board.appendChild(cell);
             }
             
-            // Add click handlers after cells are created
             document.querySelectorAll('.cell').forEach(cell => {
                 cell.addEventListener('click', (e) => {
-                    // Don't trigger if clicking remove button
                     if (e.target.classList.contains('remove-unit-btn')) return;
                     handleCellClick(parseInt(cell.dataset.index));
                 });
@@ -705,8 +695,6 @@
         }
 
         function canPlaceInCell(cellIndex) {
-            // Player 1 can only place in cells 0-19
-            // Player 2 can only place in cells 20-39
             if (playerNumber === 1) {
                 return cellIndex < 20;
             } else {
@@ -721,19 +709,16 @@
             const myBoard = gameState[myKey].board;
             const unitAtCell = myBoard.find(u => u.pos === index);
 
-            // If we have a unit selected from board (for moving)
             if (selectedBoardUnit) {
                 moveUnit(index);
                 return;
             }
 
-            // If clicking on own unit, select it for moving
             if (unitAtCell) {
                 selectBoardUnit(index);
                 return;
             }
 
-            // If we have a shop unit selected, place it
             if (selectedUnit) {
                 placeUnit(index);
                 return;
@@ -747,7 +732,6 @@
 
             if (!unit) return;
 
-            // Toggle selection
             if (selectedBoardUnit && selectedBoardUnit.id === unit.id) {
                 selectedBoardUnit = null;
                 updateBoard();
@@ -755,7 +739,7 @@
             }
 
             selectedBoardUnit = unit;
-            selectedUnit = null; // Deselect shop unit
+            selectedUnit = null;
             document.querySelectorAll('.shop-item').forEach(item => {
                 item.classList.remove('selected');
             });
@@ -768,7 +752,6 @@
             const myKey = 'player' + playerNumber;
             const myBoard = gameState[myKey].board;
 
-            // Check if can place in this cell
             if (!canPlaceInCell(newIndex)) {
                 alert('You can only place units in your half of the map!');
                 selectedBoardUnit = null;
@@ -776,7 +759,6 @@
                 return;
             }
 
-            // Check if cell is occupied by another unit
             const occupyingUnit = myBoard.find(u => u.pos === newIndex);
             if (occupyingUnit && occupyingUnit.id !== selectedBoardUnit.id) {
                 alert('Cell already occupied!');
@@ -785,7 +767,6 @@
                 return;
             }
 
-            // Move the unit
             const unit = myBoard.find(u => u.id === selectedBoardUnit.id);
             if (unit) {
                 unit.pos = newIndex;
@@ -804,7 +785,6 @@
 
             if (!unit) return;
 
-            // Refund 50% of unit cost
             const refund = Math.floor(unit.cost / 2);
             gameState[myKey].gold += refund;
             gameState[myKey].board = myBoard.filter(u => u.id !== unitId);
@@ -842,6 +822,7 @@
 
         function selectUnit(unit) {
             selectedUnit = unit;
+            selectedBoardUnit = null;
             document.querySelectorAll('.shop-item').forEach(item => {
                 item.classList.remove('selected');
             });
@@ -856,7 +837,6 @@
             const myBoard = gameState[myKey].board;
             const cap = getTroopCap(gameState.round);
 
-            // Check if player can place in this cell
             if (!canPlaceInCell(index)) {
                 alert('You can only place units in your half of the map!');
                 return;
@@ -919,17 +899,6 @@
             };
         }
 
-        function createAnimatedUnit(unit, pos) {
-            const elem = document.createElement('div');
-            elem.className = 'animated-unit';
-            elem.textContent = unit.icon;
-            elem.style.left = pos.x + 'px';
-            elem.style.top = pos.y + 'px';
-            elem.style.transform = 'translate(-50%, -50%)';
-            document.getElementById('battle-arena').appendChild(elem);
-            return elem;
-        }
-
         function showDamage(pos, damage) {
             const elem = document.createElement('div');
             elem.className = 'damage-text';
@@ -941,33 +910,6 @@
             setTimeout(() => elem.remove(), 1000);
         }
 
-        async function animateAttack(attacker, attackerPos, target, targetPos, damage) {
-            const attackElem = createAnimatedUnit(attacker, attackerPos);
-            
-            await new Promise(resolve => {
-                setTimeout(() => {
-                    attackElem.style.left = targetPos.x + 'px';
-                    attackElem.style.top = targetPos.y + 'px';
-                    resolve();
-                }, 50);
-            });
-
-            await new Promise(resolve => setTimeout(resolve, 500));
-
-            showDamage(targetPos, damage);
-            
-            await new Promise(resolve => {
-                setTimeout(() => {
-                    attackElem.style.left = attackerPos.x + 'px';
-                    attackElem.style.top = attackerPos.y + 'px';
-                    resolve();
-                }, 50);
-            });
-
-            await new Promise(resolve => setTimeout(resolve, 500));
-            attackElem.remove();
-        }
-
         function getDistance(pos1, pos2) {
             const row1 = Math.floor(pos1 / 5);
             const col1 = pos1 % 5;
@@ -977,7 +919,6 @@
         }
 
         function canAttackTarget(attacker, target) {
-            // Check if attacker can target this layer
             if (attacker.targets === 'ground' && target.layer === 'air') return false;
             if (attacker.targets === 'air' && target.layer === 'ground') return false;
             return true;
@@ -1007,16 +948,16 @@
             const targetRow = Math.floor(targetPos / 5);
             const targetCol = targetPos % 5;
             
-            // Slow down movement - only move if enough time has passed
             if (!unit.lastMoveTime) unit.lastMoveTime = 0;
             const timeSinceMove = Date.now() - unit.lastMoveTime;
-            const moveDelay = 1000 / speed; // Convert speed to delay in ms
+            const moveDelay = 1000 / speed;
             
-            if (timeSinceMove < moveDelay) return;
+            if (timeSinceMove < moveDelay) {
+                return;
+            }
             
             unit.lastMoveTime = Date.now();
             
-            // Simple movement - move one cell at a time in grid
             if (currentRow < targetRow && currentRow < 7) {
                 unit.pos += 5;
             } else if (currentRow > targetRow && currentRow > 0) {
@@ -1029,7 +970,9 @@
         }
 
         function applyDeathDamage(deadUnit, allEnemies) {
-            if (!deadUnit.deathDamage || deadUnit.deathDamage === 0) return;
+            if (!deadUnit.deathDamage || deadUnit.deathDamage === 0) {
+                return;
+            }
             
             const deadRow = Math.floor(deadUnit.pos / 5);
             const deadCol = deadUnit.pos % 5;
@@ -1061,12 +1004,15 @@
             
             displayBattleLog();
         }
+
+        function getSplashTargets(attacker, target, allEnemies) {
             const targets = [target];
             
-            if (!attacker.splash || attacker.splash === 0) return targets;
+            if (!attacker.splash || attacker.splash === 0) {
+                return targets;
+            }
             
             if (attacker.splashType === 'radius') {
-                // Wizard: 2-tile radius around target
                 const targetRow = Math.floor(target.pos / 5);
                 const targetCol = target.pos % 5;
                 
@@ -1082,35 +1028,33 @@
                     }
                 }
             } else if (attacker.splashType === 'line') {
-                // Dragon: straight line from dragon through target, 1 tile thick
                 const attackerRow = Math.floor(attacker.pos / 5);
                 const attackerCol = attacker.pos % 5;
                 const targetRow = Math.floor(target.pos / 5);
                 const targetCol = target.pos % 5;
                 
-                // Determine line direction
                 const rowDiff = targetRow - attackerRow;
                 const colDiff = targetCol - attackerCol;
                 const length = Math.sqrt(rowDiff * rowDiff + colDiff * colDiff);
                 
-                for (let enemy of allEnemies) {
-                    if (enemy.id === target.id || enemy.currentHp <= 0) continue;
-                    
-                    const enemyRow = Math.floor(enemy.pos / 5);
-                    const enemyCol = enemy.pos % 5;
-                    
-                    // Check if enemy is on the line from attacker to beyond target
-                    const toEnemyRow = enemyRow - attackerRow;
-                    const toEnemyCol = enemyCol - attackerCol;
-                    const enemyDist = Math.sqrt(toEnemyRow * toEnemyRow + toEnemyCol * toEnemyCol);
-                    
-                    if (enemyDist > length + attacker.range) continue;
-                    
-                    // Calculate perpendicular distance to line
-                    const cross = Math.abs(rowDiff * toEnemyCol - colDiff * toEnemyRow) / length;
-                    
-                    if (cross <= 1) { // 1 tile thick
-                        targets.push(enemy);
+                if (length > 0) {
+                    for (let enemy of allEnemies) {
+                        if (enemy.id === target.id || enemy.currentHp <= 0) continue;
+                        
+                        const enemyRow = Math.floor(enemy.pos / 5);
+                        const enemyCol = enemy.pos % 5;
+                        
+                        const toEnemyRow = enemyRow - attackerRow;
+                        const toEnemyCol = enemyCol - attackerCol;
+                        const enemyDist = Math.sqrt(toEnemyRow * toEnemyRow + toEnemyCol * toEnemyCol);
+                        
+                        if (enemyDist > length + attacker.range) continue;
+                        
+                        const cross = Math.abs(rowDiff * toEnemyCol - colDiff * toEnemyRow) / length;
+                        
+                        if (cross <= 1) {
+                            targets.push(enemy);
+                        }
                     }
                 }
             }
@@ -1123,7 +1067,6 @@
             currentBattleLog = [];
             await db.collection('games').doc(gameId).update({ state: gameState });
 
-            // Store original positions
             const originalPositions = {};
             gameState.player1.board.forEach(u => originalPositions[u.id] = u.pos);
             gameState.player2.board.forEach(u => originalPositions[u.id] = u.pos);
@@ -1135,12 +1078,11 @@
             displayBattleLog();
 
             let battleTime = 0;
-            const maxBattleTime = 30000; // 30 seconds max
+            const maxBattleTime = 30000;
 
             battleInterval = setInterval(async () => {
                 battleTime += 100;
 
-                // Update all units
                 const allUnits = [...p1Units, ...p2Units].filter(u => u.currentHp > 0);
                 
                 for (let unit of allUnits) {
@@ -1151,14 +1093,11 @@
 
                     if (!enemy) continue;
 
-                    // Check if in attack range
                     if (distance <= unit.range) {
-                        // Attack if cooldown ready
                         const timeSinceLastAttack = battleTime - unit.lastAttackTime;
-                        const attackCooldown = 1000 / unit.attackSpeed; // Convert to ms
+                        const attackCooldown = 1000 / unit.attackSpeed;
                         
                         if (timeSinceLastAttack >= attackCooldown) {
-                            // Get splash targets
                             const splashTargets = getSplashTargets(unit, enemy, enemies);
                             
                             for (let target of splashTargets) {
@@ -1180,7 +1119,6 @@
                                 );
                             }
 
-                            // Check if any targets died and trigger death damage
                             splashTargets.forEach(target => {
                                 if (target.currentHp <= 0) {
                                     currentBattleLog.push(`💀 ${target.icon} ${target.name} defeated!`);
@@ -1188,7 +1126,6 @@
                                 }
                             });
 
-                            // If unit dies on attack (Wall Breaker)
                             if (unit.diesOnAttack) {
                                 unit.currentHp = 0;
                                 currentBattleLog.push(`💥 ${unit.icon} ${unit.name} explodes after attacking!`);
@@ -1197,18 +1134,15 @@
                             displayBattleLog();
                         }
                     } else {
-                        // Move towards enemy
                         moveTowards(unit, enemy.pos, unit.walkSpeed);
                     }
                 }
 
-                // Update board display
                 updateBattleVisuals(p1Units, p2Units);
 
                 const p1Alive = p1Units.filter(u => u.currentHp > 0).length;
                 const p2Alive = p2Units.filter(u => u.currentHp > 0).length;
 
-                // Check win condition
                 if (p1Alive === 0 || p2Alive === 0 || battleTime >= maxBattleTime) {
                     clearInterval(battleInterval);
 
@@ -1225,10 +1159,9 @@
                         currentBattleLog.push('🤝 Draw! No damage dealt.');
                     }
 
-                    // Update surviving units back to gameState, restore HP and flip positions
                     gameState.player1.board = p1Units.filter(u => u.currentHp > 0).map(u => {
                         const originalPos = originalPositions[u.id];
-                        const flippedPos = 39 - originalPos; // Flip position (0->39, 1->38, etc.)
+                        const flippedPos = 39 - originalPos;
                         return {
                             ...u,
                             currentHp: u.hp,
@@ -1237,7 +1170,7 @@
                     });
                     gameState.player2.board = p2Units.filter(u => u.currentHp > 0).map(u => {
                         const originalPos = originalPositions[u.id];
-                        const flippedPos = 39 - originalPos; // Flip position
+                        const flippedPos = 39 - originalPos;
                         return {
                             ...u,
                             currentHp: u.hp,
@@ -1360,7 +1293,6 @@
         function updateBoard() {
             const cells = document.querySelectorAll('#board .cell');
             cells.forEach((cell, i) => {
-                // Reset cell classes
                 if (i < 20) {
                     cell.className = 'cell player1-zone';
                 } else {
@@ -1368,13 +1300,11 @@
                 }
                 cell.innerHTML = '';
 
-                // Disable cells in opponent's zone during prep phase
                 if (gameState.phase === 'prep') {
                     if (!canPlaceInCell(i)) {
                         cell.classList.add('disabled');
                     }
                     
-                    // Highlight valid move targets if unit is selected
                     if (selectedBoardUnit && canPlaceInCell(i)) {
                         const myKey = 'player' + playerNumber;
                         const myBoard = gameState[myKey].board;
@@ -1395,7 +1325,6 @@
                     cell.classList.add('occupied');
                     cell.classList.remove('player1-zone', 'player2-zone', 'disabled');
                     
-                    // Highlight selected unit
                     if (selectedBoardUnit && selectedBoardUnit.id === myUnit.id) {
                         cell.classList.add('selected-unit');
                     }
@@ -1411,7 +1340,6 @@
                         <div class="unit-hp">HP: ${myUnit.currentHp}/${myUnit.hp}</div>
                     `;
                     
-                    // Add remove button click handler
                     if (gameState.phase === 'prep') {
                         const btn = cell.querySelector('.remove-unit-btn');
                         if (btn) {
