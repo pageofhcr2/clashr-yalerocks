@@ -245,16 +245,22 @@
         }
 
         .unit {
-            color: white;
-            font-weight: bold;
-            text-align: center;
-            font-size: 24px;
+            width: 50px;
+            height: 50px;
+            object-fit: contain;
+        }
+
+        .unit-icon {
+            width: 50px;
+            height: 50px;
+            object-fit: contain;
         }
 
         .unit-name {
-            font-size: 10px;
+            font-size: 8px;
             margin-top: 2px;
             color: white;
+            font-weight: normal;
         }
 
         .unit-hp {
@@ -506,50 +512,63 @@
             player2: { health: 10, gold: 4, board: [], ready: false },
             phase: 'prep',
             round: 1,
-            battleLog: []
+            battleLog: [],
+            phaseStartTime: Date.now()
         };
         let unsubscribe = null;
         let currentBattleLog = [];
         let battleInterval = null;
+        let phaseTimer = null;
+
+        const UNIT_IMAGES = {
+            barbarian: 'https://github.com/pageofhcr2/clashr-yalerocks/blob/main/barbarian.png?raw=true',
+            archer: 'https://github.com/pageofhcr2/clashr-yalerocks/blob/main/archer.png?raw=true',
+            wizard: 'https://github.com/pageofhcr2/clashr-yalerocks/blob/main/wizard.png?raw=true',
+            giant: 'https://github.com/pageofhcr2/clashr-yalerocks/blob/main/giant.png?raw=true',
+            goblin: 'https://github.com/pageofhcr2/clashr-yalerocks/blob/main/goblin.png?raw=true',
+            dragon: 'https://github.com/pageofhcr2/clashr-yalerocks/blob/main/dragon.png?raw=true',
+            balloon: 'https://github.com/pageofhcr2/clashr-yalerocks/blob/main/balloon.png?raw=true',
+            wallbreaker: 'https://github.com/pageofhcr2/clashr-yalerocks/blob/main/wallbreaker.png?raw=true'
+        };
 
         const UNITS = [
             { 
-                id: 'barbarian', name: 'Barbarian', icon: '🪓', cost: 5, 
+                id: 'barbarian', name: 'Barbarian', icon: 'barbarian', cost: 5, 
                 hp: 1310, atk: 375, walkSpeed: 0.5, attackSpeed: 0.77, range: 1, 
                 targets: 'ground', layer: 'ground', splash: 0, deathDamage: 0, deathSplash: 0
             },
             { 
-                id: 'archer', name: 'Archer', icon: '🏹', cost: 3, 
+                id: 'archer', name: 'Archer', icon: 'archer', cost: 3, 
                 hp: 238, atk: 78, walkSpeed: 0.5, attackSpeed: 1.11, range: 5, 
                 targets: 'both', layer: 'ground', splash: 0, deathDamage: 0, deathSplash: 0
             },
             { 
-                id: 'wizard', name: 'Wizard', icon: '🔮', cost: 5, 
+                id: 'wizard', name: 'Wizard', icon: 'wizard', cost: 5, 
                 hp: 356, atk: 133, walkSpeed: 0.5, attackSpeed: 1.4, range: 5, 
                 targets: 'both', layer: 'ground', splash: 2, splashType: 'radius', deathDamage: 0, deathSplash: 0
             },
             { 
-                id: 'giant', name: 'Giant', icon: '🛡️', cost: 5, 
+                id: 'giant', name: 'Giant', icon: 'giant', cost: 5, 
                 hp: 1933, atk: 119, walkSpeed: 0.25, attackSpeed: 1.5, range: 1, 
                 targets: 'ground', layer: 'ground', splash: 0, deathDamage: 0, deathSplash: 0
             },
             { 
-                id: 'goblin', name: 'Goblin', icon: '🥷', cost: 2, 
+                id: 'goblin', name: 'Goblin', icon: 'goblin', cost: 2, 
                 hp: 316, atk: 188, walkSpeed: 1, attackSpeed: 1.1, range: 1, 
                 targets: 'ground', layer: 'ground', splash: 0, deathDamage: 0, deathSplash: 0
             },
             { 
-                id: 'dragon', name: 'Dragon', icon: '🐉', cost: 7, 
+                id: 'dragon', name: 'Dragon', icon: 'dragon', cost: 7, 
                 hp: 1900, atk: 175, walkSpeed: 0.5, attackSpeed: 1.25, range: 4, 
                 targets: 'both', layer: 'air', splash: 1, splashType: 'line', deathDamage: 0, deathSplash: 0
             },
             { 
-                id: 'balloon', name: 'Balloon', icon: '🎈', cost: 5, 
+                id: 'balloon', name: 'Balloon', icon: 'balloon', cost: 5, 
                 hp: 1049, atk: 400, walkSpeed: 0.5, attackSpeed: 2, range: 1, 
                 targets: 'both', layer: 'air', splash: 0, deathDamage: 150, deathSplash: 2
             },
             { 
-                id: 'wallbreaker', name: 'Wall Breaker', icon: '💣', cost: 2, 
+                id: 'wallbreaker', name: 'Wall Breaker', icon: 'wallbreaker', cost: 2, 
                 hp: 412, atk: 488, walkSpeed: 1, attackSpeed: 1, range: 1, 
                 targets: 'ground', layer: 'ground', splash: 2, splashType: 'radius', 
                 deathDamage: 0, deathSplash: 0, diesOnAttack: true
@@ -667,8 +686,66 @@
                     
                     updateGameUI();
                     showScreen('game-screen');
+                    checkPhaseTimer();
                 }
             });
+        }
+
+        function checkPhaseTimer() {
+            if (phaseTimer) {
+                clearInterval(phaseTimer);
+            }
+
+            if (gameState.phase === 'prep') {
+                const elapsed = Date.now() - (gameState.phaseStartTime || Date.now());
+                const remaining = Math.max(0, 60000 - elapsed);
+                
+                if (remaining === 0) {
+                    autoReadyForBattle();
+                } else {
+                    phaseTimer = setTimeout(() => {
+                        autoReadyForBattle();
+                    }, remaining);
+                }
+            } else if (gameState.phase === 'battle') {
+                const elapsed = Date.now() - (gameState.phaseStartTime || Date.now());
+                const remaining = Math.max(0, 60000 - elapsed);
+                
+                if (remaining === 0) {
+                    forceEndBattle();
+                } else {
+                    phaseTimer = setTimeout(() => {
+                        forceEndBattle();
+                    }, remaining);
+                }
+            }
+        }
+
+        async function autoReadyForBattle() {
+            if (gameState.phase !== 'prep') return;
+            
+            const myKey = 'player' + playerNumber;
+            if (!gameState[myKey].ready) {
+                gameState[myKey].ready = true;
+                await db.collection('games').doc(gameId).update({ state: gameState });
+            }
+
+            if (gameState.player1.ready && gameState.player2.ready) {
+                await simulateBattle();
+            }
+        }
+
+        function forceEndBattle() {
+            if (battleInterval) {
+                clearInterval(battleInterval);
+            }
+            
+            currentBattleLog.push('⏰ Battle time limit reached!');
+            displayBattleLog();
+            
+            setTimeout(() => {
+                nextRound();
+            }, 2000);
         }
 
         function initBoard() {
@@ -810,7 +887,7 @@
                 item.className = 'shop-item';
                 item.onclick = () => selectUnit(unit);
                 item.innerHTML = `
-                    <div class="icon">${unit.icon}</div>
+                    <img src="${UNIT_IMAGES[unit.icon]}" class="unit-icon" alt="${unit.name}">
                     <div>${unit.name}</div>
                     <div class="cost">💰 ${unit.cost}</div>
                     <div style="font-size: 9px; color: #7f8c8d; line-height: 1.2;">
@@ -1067,6 +1144,7 @@
 
         async function simulateBattle() {
             gameState.phase = 'battle';
+            gameState.phaseStartTime = Date.now();
             currentBattleLog = [];
             await db.collection('games').doc(gameId).update({ state: gameState });
 
@@ -1081,7 +1159,7 @@
             displayBattleLog();
 
             let battleTime = 0;
-            const maxBattleTime = 30000;
+            const maxBattleTime = 60000;
 
             battleInterval = setInterval(async () => {
                 battleTime += 100;
@@ -1092,6 +1170,10 @@
                     if (unit.currentHp <= 0) continue;
 
                     const enemies = unit.owner === 1 ? p2Units : p1Units;
+                    const aliveEnemies = enemies.filter(e => e.currentHp > 0);
+
+                    if (aliveEnemies.length === 0) continue;
+
                     const { enemy, distance } = findClosestEnemy(unit, enemies);
 
                     if (!enemy) continue;
@@ -1118,7 +1200,7 @@
                                 );
                             } else {
                                 currentBattleLog.push(
-                                    `${unit.icon} attacks ${enemy.icon} for ${unit.atk} damage! (${Math.max(0, enemy.currentHp)}/${enemy.hp} HP)`
+                                    `${unit.icon} attacks ${enemy.icon} for ${unit.atk} damage! (${Math.max(0, Math.floor(enemy.currentHp))}/${enemy.hp} HP)`
                                 );
                             }
 
@@ -1148,86 +1230,89 @@
 
                 if (p1Alive === 0 || p2Alive === 0 || battleTime >= maxBattleTime) {
                     clearInterval(battleInterval);
-
-                    let damageDealt = 0;
-                    if (p1Alive > p2Alive) {
-                        damageDealt = p1Alive + 1;
-                        gameState.player2.health -= damageDealt;
-                        currentBattleLog.push(`🏆 Player 1 wins! ${damageDealt} damage dealt (${p1Alive} survivors + 1)`);
-                    } else if (p2Alive > p1Alive) {
-                        damageDealt = p2Alive + 1;
-                        gameState.player1.health -= damageDealt;
-                        currentBattleLog.push(`🏆 Player 2 wins! ${damageDealt} damage dealt (${p2Alive} survivors + 1)`);
-                    } else {
-                        currentBattleLog.push('🤝 Draw! No damage dealt.');
-                    }
-
-                    gameState.player1.board = p1Units.filter(u => u.currentHp > 0).map(u => {
-                        const originalPos = originalPositions[u.id];
-                        const flippedPos = 39 - originalPos;
-                        return {
-                            id: u.id,
-                            name: u.name,
-                            icon: u.icon,
-                            cost: u.cost,
-                            hp: u.hp,
-                            atk: u.atk,
-                            walkSpeed: u.walkSpeed,
-                            attackSpeed: u.attackSpeed,
-                            range: u.range,
-                            targets: u.targets,
-                            layer: u.layer,
-                            splash: u.splash,
-                            splashType: u.splashType,
-                            deathDamage: u.deathDamage,
-                            deathSplash: u.deathSplash,
-                            diesOnAttack: u.diesOnAttack,
-                            currentHp: u.hp,
-                            pos: flippedPos,
-                            lastAttackTime: 0
-                        };
-                    });
-                    gameState.player2.board = p2Units.filter(u => u.currentHp > 0).map(u => {
-                        const originalPos = originalPositions[u.id];
-                        const flippedPos = 39 - originalPos;
-                        return {
-                            id: u.id,
-                            name: u.name,
-                            icon: u.icon,
-                            cost: u.cost,
-                            hp: u.hp,
-                            atk: u.atk,
-                            walkSpeed: u.walkSpeed,
-                            attackSpeed: u.attackSpeed,
-                            range: u.range,
-                            targets: u.targets,
-                            layer: u.layer,
-                            splash: u.splash,
-                            splashType: u.splashType,
-                            deathDamage: u.deathDamage,
-                            deathSplash: u.deathSplash,
-                            diesOnAttack: u.diesOnAttack,
-                            currentHp: u.hp,
-                            pos: flippedPos,
-                            lastAttackTime: 0
-                        };
-                    });
-                    gameState.battleLog = currentBattleLog;
-
-                    if (gameState.player1.health <= 0 || gameState.player2.health <= 0) {
-                        const winner = gameState.player1.health > 0 ? 'Player 1' : 'Player 2';
-                        currentBattleLog.push(`🎉 ${winner} wins the game!`);
-                        gameState.phase = 'ended';
-                    } else {
-                        setTimeout(() => {
-                            nextRound();
-                        }, 3000);
-                    }
-
-                    displayBattleLog();
-                    await db.collection('games').doc(gameId).update({ state: gameState });
+                    endBattle(p1Units, p2Units, originalPositions, p1Alive, p2Alive);
                 }
             }, 100);
+        }
+
+        async function endBattle(p1Units, p2Units, originalPositions, p1Alive, p2Alive) {
+            let damageDealt = 0;
+            if (p1Alive > p2Alive) {
+                damageDealt = p1Alive + 1;
+                gameState.player2.health -= damageDealt;
+                currentBattleLog.push(`🏆 Player 1 wins! ${damageDealt} damage dealt (${p1Alive} survivors + 1)`);
+            } else if (p2Alive > p1Alive) {
+                damageDealt = p2Alive + 1;
+                gameState.player1.health -= damageDealt;
+                currentBattleLog.push(`🏆 Player 2 wins! ${damageDealt} damage dealt (${p2Alive} survivors + 1)`);
+            } else {
+                currentBattleLog.push('🤝 Draw! No damage dealt.');
+            }
+
+            gameState.player1.board = p1Units.filter(u => u.currentHp > 0).map(u => {
+                const originalPos = originalPositions[u.id];
+                const flippedPos = 39 - originalPos;
+                return {
+                    id: u.id,
+                    name: u.name,
+                    icon: u.icon,
+                    cost: u.cost,
+                    hp: u.hp,
+                    atk: u.atk,
+                    walkSpeed: u.walkSpeed,
+                    attackSpeed: u.attackSpeed,
+                    range: u.range,
+                    targets: u.targets,
+                    layer: u.layer,
+                    splash: u.splash,
+                    splashType: u.splashType,
+                    deathDamage: u.deathDamage,
+                    deathSplash: u.deathSplash,
+                    diesOnAttack: u.diesOnAttack,
+                    currentHp: u.hp,
+                    pos: flippedPos,
+                    lastAttackTime: 0
+                };
+            });
+            gameState.player2.board = p2Units.filter(u => u.currentHp > 0).map(u => {
+                const originalPos = originalPositions[u.id];
+                const flippedPos = 39 - originalPos;
+                return {
+                    id: u.id,
+                    name: u.name,
+                    icon: u.icon,
+                    cost: u.cost,
+                    hp: u.hp,
+                    atk: u.atk,
+                    walkSpeed: u.walkSpeed,
+                    attackSpeed: u.attackSpeed,
+                    range: u.range,
+                    targets: u.targets,
+                    layer: u.layer,
+                    splash: u.splash,
+                    splashType: u.splashType,
+                    deathDamage: u.deathDamage,
+                    deathSplash: u.deathSplash,
+                    diesOnAttack: u.diesOnAttack,
+                    currentHp: u.hp,
+                    pos: flippedPos,
+                    lastAttackTime: 0
+                };
+            });
+            gameState.battleLog = currentBattleLog;
+
+            if (gameState.player1.health <= 0 || gameState.player2.health <= 0) {
+                const winner = gameState.player1.health > 0 ? 'Player 1' : 'Player 2';
+                currentBattleLog.push(`🎉 ${winner} wins the game!`);
+                gameState.phase = 'ended';
+                await db.collection('games').doc(gameId).update({ state: gameState });
+            } else {
+                displayBattleLog();
+                await db.collection('games').doc(gameId).update({ state: gameState });
+                setTimeout(() => {
+                    nextRound();
+                }, 3000);
+            }
         }
 
         function updateBattleVisuals(p1Units, p2Units) {
@@ -1247,7 +1332,7 @@
                     cell.classList.add('occupied');
                     cell.classList.remove('player1-zone', 'player2-zone');
                     cell.innerHTML = `
-                        <div class="unit">${p1Unit.icon}</div>
+                        <img src="${UNIT_IMAGES[p1Unit.icon]}" class="unit" alt="${p1Unit.name}">
                         <div class="unit-name">${p1Unit.name}</div>
                         <div class="unit-hp">HP: ${Math.max(0, Math.floor(p1Unit.currentHp))}/${p1Unit.hp}</div>
                     `;
@@ -1255,7 +1340,7 @@
                     cell.classList.add('enemy');
                     cell.classList.remove('player1-zone', 'player2-zone');
                     cell.innerHTML = `
-                        <div class="unit">${p2Unit.icon}</div>
+                        <img src="${UNIT_IMAGES[p2Unit.icon]}" class="unit" alt="${p2Unit.name}">
                         <div class="unit-name">${p2Unit.name}</div>
                         <div class="unit-hp">HP: ${Math.max(0, Math.floor(p2Unit.currentHp))}/${p2Unit.hp}</div>
                     `;
@@ -1278,6 +1363,9 @@
             if (battleInterval) {
                 clearInterval(battleInterval);
             }
+            if (phaseTimer) {
+                clearTimeout(phaseTimer);
+            }
 
             gameState.round++;
             gameState.player1.gold += 4;
@@ -1285,10 +1373,12 @@
             gameState.player1.ready = false;
             gameState.player2.ready = false;
             gameState.phase = 'prep';
+            gameState.phaseStartTime = Date.now();
             gameState.battleLog = [];
 
             await db.collection('games').doc(gameId).update({ state: gameState });
             updateGameUI();
+            checkPhaseTimer();
         }
 
         function updateGameUI() {
@@ -1370,7 +1460,7 @@
                     
                     cell.innerHTML = `
                         ${removeBtn}
-                        <div class="unit">${myUnit.icon}</div>
+                        <img src="${UNIT_IMAGES[myUnit.icon]}" class="unit" alt="${myUnit.name}">
                         <div class="unit-name">${myUnit.name}</div>
                         <div class="unit-hp">HP: ${myUnit.currentHp}/${myUnit.hp}</div>
                     `;
@@ -1388,7 +1478,7 @@
                     cell.classList.add('enemy');
                     cell.classList.remove('player1-zone', 'player2-zone', 'disabled');
                     cell.innerHTML = `
-                        <div class="unit">${opponentUnit.icon}</div>
+                        <img src="${UNIT_IMAGES[opponentUnit.icon]}" class="unit" alt="${opponentUnit.name}">
                         <div class="unit-name">${opponentUnit.name}</div>
                         <div class="unit-hp">HP: ${opponentUnit.currentHp}/${opponentUnit.hp}</div>
                     `;
