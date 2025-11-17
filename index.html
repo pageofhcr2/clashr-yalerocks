@@ -519,6 +519,7 @@
         let currentBattleLog = [];
         let battleInterval = null;
         let phaseTimer = null;
+        let battleStarted = false;
 
         const UNIT_IMAGES = {
             barbarian: 'https://github.com/pageofhcr2/clashr-yalerocks/blob/main/barbarian.png?raw=true',
@@ -679,7 +680,6 @@
                 if (data.status === 'active' && data.state) {
                     const previousPhase = gameState.phase;
                     const previousRound = gameState.round;
-                    const wasBothReady = gameState.player1.ready && gameState.player2.ready;
                     
                     gameState = data.state;
                     
@@ -694,25 +694,21 @@
                             clearInterval(battleInterval);
                             battleInterval = null;
                         }
+                        battleStarted = false;
                         // Clear battle log display when entering prep
                         document.getElementById('battle-log').innerHTML = '';
+                    }
+                    
+                    // Reset battleStarted flag on new round
+                    if (previousRound !== gameState.round) {
+                        battleStarted = false;
+                        console.log('New round, reset battleStarted flag');
                     }
                     
                     // Display battle log if in battle phase
                     if (gameState.phase === 'battle' && gameState.battleLog) {
                         currentBattleLog = gameState.battleLog;
                         displayBattleLog();
-                    }
-                    
-                    // Check if both players just became ready (prevent duplicate triggers)
-                    const nowBothReady = gameState.player1.ready && gameState.player2.ready;
-                    if (gameState.phase === 'prep' && nowBothReady && !wasBothReady) {
-                        if (playerNumber === 1 && !battleInterval) {
-                            console.log('Firebase detected both ready, P1 starting battle');
-                            setTimeout(() => {
-                                simulateBattle();
-                            }, 500);
-                        }
                     }
                     
                     updateGameUI();
@@ -1017,24 +1013,26 @@
             const myKey = 'player' + playerNumber;
             
             if (gameState[myKey].ready) {
-                alert('You are already ready!');
+                console.log('Already ready, ignoring click');
                 return;
             }
             
-            gameState[myKey].ready = true;
-            await db.collection('games').doc(gameId).update({ state: gameState });
+            // Get fresh state from Firebase
+            const gameDoc = await db.collection('games').doc(gameId).get();
+            const freshState = gameDoc.data().state;
+            
+            freshState[myKey].ready = true;
+            await db.collection('games').doc(gameId).update({ state: freshState });
 
-            document.getElementById('waiting-message').style.display = 'block';
-            document.getElementById('ready-btn').disabled = true;
-            document.getElementById('ready-btn').textContent = '✅ Ready! Waiting...';
+            console.log(`Player ${playerNumber} is now ready`);
+            console.log('P1 ready:', freshState.player1.ready, 'P2 ready:', freshState.player2.ready);
 
-            console.log(`Player ${playerNumber} is ready`);
-            console.log('P1 ready:', gameState.player1.ready, 'P2 ready:', gameState.player2.ready);
-
-            if (gameState.player1.ready && gameState.player2.ready) {
-                console.log('Both players ready, starting battle');
+            if (freshState.player1.ready && freshState.player2.ready) {
+                console.log('Both players ready');
                 // Only player 1 initiates the battle
-                if (playerNumber === 1) {
+                if (playerNumber === 1 && !battleStarted) {
+                    battleStarted = true;
+                    console.log('Player 1 starting battle in 500ms');
                     setTimeout(() => {
                         simulateBattle();
                     }, 500);
