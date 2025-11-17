@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MergeJS</title>
+    <title>AutoChess Battle</title>
     <style>
         * {
             margin: 0;
@@ -435,7 +435,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>MergeJS</h1>
+        <h1>⚔️ AutoChess Battle Arena</h1>
 
         <div id="start-screen" class="screen active">
             <div class="input-group">
@@ -443,15 +443,18 @@
                 <input type="text" id="player-name" placeholder="Enter your name" value="Player1">
             </div>
             <div class="btn-container">
-                <button onclick="startGame()">START GAME</button>
+                <button onclick="startGame()">🎮 START GAME</button>
             </div>
+            <p class="info-text">Firebase is pre-configured! Just enter your name and play.</p>
+            <p class="info-text">Open in 2 tabs to test multiplayer!</p>
         </div>
 
         <div id="lobby-screen" class="screen">
             <div id="matchmaking-status">
-                <h2>Finding Opponent...</h2>
+                <h2>🔍 Finding Opponent...</h2>
                 <div class="spinner"></div>
                 <p>Waiting for another player to join...</p>
+                <p class="info-text">Open this game in another tab/browser to test!</p>
             </div>
         </div>
 
@@ -461,8 +464,8 @@
             <div class="game-info">
                 <div class="player-info">
                     <h3 id="player1-name">You</h3>
-                    <div class="health"><span id="player1-health">10</span></div>
-                    <div class="gold"><span id="player1-gold">8</span></div>
+                    <div class="health">❤️ <span id="player1-health">10</span></div>
+                    <div class="gold">💰 <span id="player1-gold">4</span></div>
                     <div class="troop-cap">Troops: <span id="player1-troops">0</span>/<span id="player1-cap">2</span></div>
                 </div>
                 <div class="player-info">
@@ -470,8 +473,8 @@
                 </div>
                 <div class="player-info">
                     <h3 id="player2-name">Opponent</h3>
-                    <div class="health"><span id="player2-health">10</span></div>
-                    <div class="gold"><span id="player2-gold">8</span></div>
+                    <div class="health">❤️ <span id="player2-health">10</span></div>
+                    <div class="gold">💰 <span id="player2-gold">4</span></div>
                     <div class="troop-cap">Troops: <span id="player2-troops">0</span>/<span id="player2-cap">2</span></div>
                 </div>
             </div>
@@ -490,7 +493,7 @@
             </div>
 
             <div class="actions">
-                <button id="ready-btn" class="small-btn" onclick="readyForBattle()">Ready for Battle!</button>
+                <button id="ready-btn" class="small-btn" onclick="readyForBattle()">✅ Ready for Battle!</button>
             </div>
 
             <div class="battle-log" id="battle-log"></div>
@@ -505,8 +508,8 @@
         let selectedUnit = null;
         let selectedBoardUnit = null;
         let gameState = {
-            player1: { health: 10, gold: 8, board: [], ready: false },
-            player2: { health: 10, gold: 8, board: [], ready: false },
+            player1: { health: 10, gold: 4, board: [], ready: false },
+            player2: { health: 10, gold: 4, board: [], ready: false },
             phase: 'prep',
             round: 1,
             battleLog: [],
@@ -643,16 +646,25 @@
                     gameId = game.id;
                     playerNumber = 2;
                     
+                    // Add starting troop for player 2
+                    const startingTroop = generateStartingTroop(2);
+                    gameData.state.player2.board = [startingTroop];
+                    
                     await gamesRef.doc(gameId).update({
                         player2: playerId,
                         player2Name: document.getElementById('player-name').value,
-                        status: 'active'
+                        status: 'active',
+                        state: gameData.state
                     });
                     
                     listenToGame();
                     return;
                 }
             }
+            
+            // Generate starting troop for player 1
+            const startingTroop = generateStartingTroop(1);
+            gameState.player1.board = [startingTroop];
             
             // Create a new game if no available games found
             const newGame = await gamesRef.add({
@@ -668,6 +680,43 @@
             playerNumber = 1;
 
             listenToGame();
+        }
+
+        function generateStartingTroop(playerNum) {
+            // Filter units that cost 1-3
+            const cheapUnits = UNITS.filter(u => u.cost >= 1 && u.cost <= 3);
+            const randomUnit = cheapUnits[Math.floor(Math.random() * cheapUnits.length)];
+            
+            // Generate random position in player's territory
+            let randomPos;
+            if (playerNum === 1) {
+                // Player 1: positions 0-19 (top 4 rows)
+                randomPos = Math.floor(Math.random() * 20);
+            } else {
+                // Player 2: positions 20-39 (bottom 4 rows)
+                randomPos = 20 + Math.floor(Math.random() * 20);
+            }
+            
+            return {
+                id: randomUnit.id + '_starter_' + Date.now(),
+                name: randomUnit.name,
+                icon: randomUnit.icon,
+                cost: randomUnit.cost,
+                hp: randomUnit.hp,
+                atk: randomUnit.atk,
+                walkSpeed: randomUnit.walkSpeed,
+                attackSpeed: randomUnit.attackSpeed,
+                range: randomUnit.range,
+                targets: randomUnit.targets,
+                layer: randomUnit.layer,
+                splash: randomUnit.splash || 0,
+                splashType: randomUnit.splashType || null,
+                deathDamage: randomUnit.deathDamage || 0,
+                deathSplash: randomUnit.deathSplash || 0,
+                diesOnAttack: randomUnit.diesOnAttack || false,
+                currentHp: randomUnit.hp,
+                pos: randomPos
+            };
         }
 
         function listenToGame() {
@@ -1128,7 +1177,7 @@
             const deadRow = Math.floor(deadUnit.pos / 5);
             const deadCol = deadUnit.pos % 5;
             
-            currentBattleLog.push(`${deadUnit.icon} death damage activated!`);
+            currentBattleLog.push(`💥 ${deadUnit.icon} death damage activated!`);
             
             for (let enemy of allEnemies) {
                 if (enemy.currentHp <= 0) continue;
@@ -1144,7 +1193,7 @@
                     showDamage(enemyPos, deadUnit.deathDamage);
                     
                     currentBattleLog.push(
-                        `${enemy.icon} takes ${deadUnit.deathDamage} death damage! (${Math.max(0, enemy.currentHp)}/${enemy.hp} HP)`
+                        `💥 ${enemy.icon} takes ${deadUnit.deathDamage} death damage! (${Math.max(0, enemy.currentHp)}/${enemy.hp} HP)`
                     );
                     
                     if (enemy.currentHp <= 0) {
@@ -1284,7 +1333,7 @@
 
                             if (unit.diesOnAttack) {
                                 unit.currentHp = 0;
-                                currentBattleLog.push(`${unit.icon} ${unit.name} explodes after attacking!`);
+                                currentBattleLog.push(`💥 ${unit.icon} ${unit.name} explodes after attacking!`);
                             }
 
                             displayBattleLog();
@@ -1311,13 +1360,13 @@
             if (p1Alive > p2Alive) {
                 damageDealt = p1Alive + 1;
                 gameState.player2.health -= damageDealt;
-                currentBattleLog.push(`Player 1 wins! ${damageDealt} damage dealt (${p1Alive} survivors + 1)`);
+                currentBattleLog.push(`🏆 Player 1 wins! ${damageDealt} damage dealt (${p1Alive} survivors + 1)`);
             } else if (p2Alive > p1Alive) {
                 damageDealt = p2Alive + 1;
                 gameState.player1.health -= damageDealt;
-                currentBattleLog.push(`Player 2 wins! ${damageDealt} damage dealt (${p2Alive} survivors + 1)`);
+                currentBattleLog.push(`🏆 Player 2 wins! ${damageDealt} damage dealt (${p2Alive} survivors + 1)`);
             } else {
-                currentBattleLog.push('Draw! No damage dealt.');
+                currentBattleLog.push('🤝 Draw! No damage dealt.');
             }
 
             gameState.player1.board = p1Units.filter(u => u.currentHp > 0).map(u => {
@@ -1438,8 +1487,8 @@
             }
 
             gameState.round++;
-            gameState.player1.gold += 8;
-            gameState.player2.gold += 8;
+            gameState.player1.gold += 4;
+            gameState.player2.gold += 4;
             gameState.player1.ready = false;
             gameState.player2.ready = false;
             gameState.phase = 'prep';
@@ -1476,22 +1525,26 @@
             const waitingMsg = document.getElementById('waiting-message');
             const myKey = 'player' + playerNumber;
             
+            console.log('UpdateGameUI - Phase:', gameState.phase, 'My ready:', gameState[myKey].ready);
+            
             if (gameState.phase === 'prep') {
                 if (gameState[myKey].ready) {
                     readyBtn.disabled = true;
-                    readyBtn.textContent = 'Ready! Waiting...';
+                    readyBtn.textContent = '✅ Ready! Waiting...';
                     waitingMsg.style.display = 'block';
+                    waitingMsg.textContent = 'Waiting for opponent to finish their turn...';
                 } else {
                     readyBtn.disabled = false;
-                    readyBtn.textContent = 'Ready for Battle!';
+                    readyBtn.textContent = '✅ Ready for Battle!';
                     waitingMsg.style.display = 'none';
                 }
             } else if (gameState.phase === 'battle') {
                 readyBtn.disabled = true;
-                readyBtn.textContent = 'Battle in Progress';
+                readyBtn.textContent = '⚔️ Battle in Progress';
                 waitingMsg.style.display = 'none';
             } else {
                 readyBtn.disabled = true;
+                readyBtn.textContent = 'Game Ended';
                 waitingMsg.style.display = 'none';
             }
 
