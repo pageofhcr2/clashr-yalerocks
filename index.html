@@ -702,6 +702,16 @@
                         displayBattleLog();
                     }
                     
+                    // Check if both players are ready and trigger battle for Player 1
+                    if (gameState.phase === 'prep' && gameState.player1.ready && gameState.player2.ready) {
+                        if (playerNumber === 1 && !battleInterval) {
+                            console.log('Firebase detected both ready, P1 starting battle');
+                            setTimeout(() => {
+                                simulateBattle();
+                            }, 500);
+                        }
+                    }
+                    
                     updateGameUI();
                     showScreen('game-screen');
                     
@@ -1002,17 +1012,31 @@
 
         async function readyForBattle() {
             const myKey = 'player' + playerNumber;
+            
+            if (gameState[myKey].ready) {
+                alert('You are already ready!');
+                return;
+            }
+            
             gameState[myKey].ready = true;
             await db.collection('games').doc(gameId).update({ state: gameState });
 
             document.getElementById('waiting-message').style.display = 'block';
+            document.getElementById('ready-btn').disabled = true;
+            document.getElementById('ready-btn').textContent = '✅ Ready! Waiting...';
+
+            console.log(`Player ${playerNumber} is ready`);
+            console.log('P1 ready:', gameState.player1.ready, 'P2 ready:', gameState.player2.ready);
 
             if (gameState.player1.ready && gameState.player2.ready) {
+                console.log('Both players ready, starting battle');
                 // Only player 1 initiates the battle
                 if (playerNumber === 1) {
                     setTimeout(() => {
                         simulateBattle();
                     }, 500);
+                } else {
+                    console.log('Player 2 waiting for Player 1 to start battle');
                 }
             }
         }
@@ -1451,13 +1475,20 @@
             document.getElementById('player2-cap').textContent = cap;
 
             const readyBtn = document.getElementById('ready-btn');
-            readyBtn.disabled = gameState.phase !== 'prep';
-
             const myKey = 'player' + playerNumber;
-            if (gameState[myKey].ready) {
-                document.getElementById('waiting-message').style.display = 'block';
+            
+            if (gameState.phase === 'prep') {
+                if (gameState[myKey].ready) {
+                    readyBtn.disabled = true;
+                    readyBtn.textContent = '✅ Ready! Waiting...';
+                    document.getElementById('waiting-message').style.display = 'block';
+                } else {
+                    readyBtn.disabled = false;
+                    readyBtn.textContent = '✅ Ready for Battle!';
+                    document.getElementById('waiting-message').style.display = 'none';
+                }
             } else {
-                document.getElementById('waiting-message').style.display = 'none';
+                readyBtn.disabled = true;
             }
 
             updateBoard();
