@@ -679,6 +679,8 @@
                 if (data.status === 'active' && data.state) {
                     const previousPhase = gameState.phase;
                     const previousRound = gameState.round;
+                    const wasBothReady = gameState.player1.ready && gameState.player2.ready;
+                    
                     gameState = data.state;
                     
                     document.getElementById('player1-name').textContent = 
@@ -702,8 +704,9 @@
                         displayBattleLog();
                     }
                     
-                    // Check if both players are ready and trigger battle for Player 1
-                    if (gameState.phase === 'prep' && gameState.player1.ready && gameState.player2.ready) {
+                    // Check if both players just became ready (prevent duplicate triggers)
+                    const nowBothReady = gameState.player1.ready && gameState.player2.ready;
+                    if (gameState.phase === 'prep' && nowBothReady && !wasBothReady) {
                         if (playerNumber === 1 && !battleInterval) {
                             console.log('Firebase detected both ready, P1 starting battle');
                             setTimeout(() => {
