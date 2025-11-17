@@ -1478,20 +1478,26 @@
             document.getElementById('player2-cap').textContent = cap;
 
             const readyBtn = document.getElementById('ready-btn');
+            const waitingMsg = document.getElementById('waiting-message');
             const myKey = 'player' + playerNumber;
             
             if (gameState.phase === 'prep') {
                 if (gameState[myKey].ready) {
                     readyBtn.disabled = true;
                     readyBtn.textContent = '✅ Ready! Waiting...';
-                    document.getElementById('waiting-message').style.display = 'block';
+                    waitingMsg.style.display = 'block';
                 } else {
                     readyBtn.disabled = false;
                     readyBtn.textContent = '✅ Ready for Battle!';
-                    document.getElementById('waiting-message').style.display = 'none';
+                    waitingMsg.style.display = 'none';
                 }
+            } else if (gameState.phase === 'battle') {
+                readyBtn.disabled = true;
+                readyBtn.textContent = '⚔️ Battle in Progress';
+                waitingMsg.style.display = 'none';
             } else {
                 readyBtn.disabled = true;
+                waitingMsg.style.display = 'none';
             }
 
             updateBoard();
