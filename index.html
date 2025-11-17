@@ -692,6 +692,8 @@
                             clearInterval(battleInterval);
                             battleInterval = null;
                         }
+                        // Clear battle log display when entering prep
+                        document.getElementById('battle-log').innerHTML = '';
                     }
                     
                     // Display battle log if in battle phase
@@ -1471,6 +1473,7 @@
                 }
                 cell.innerHTML = '';
 
+                // During PREP phase only
                 if (gameState.phase === 'prep') {
                     if (!canPlaceInCell(i)) {
                         cell.classList.add('disabled');
@@ -1484,35 +1487,31 @@
                             cell.classList.add('move-target');
                         }
                     }
-                }
 
-                const myKey = 'player' + playerNumber;
-                const opponentKey = playerNumber === 1 ? 'player2' : 'player1';
-                
-                const myUnit = gameState[myKey].board.find(u => u.pos === i);
-                const opponentUnit = gameState[opponentKey].board.find(u => u.pos === i);
+                    const myKey = 'player' + playerNumber;
+                    const opponentKey = playerNumber === 1 ? 'player2' : 'player1';
+                    
+                    const myUnit = gameState[myKey].board.find(u => u.pos === i);
+                    const opponentUnit = gameState[opponentKey].board.find(u => u.pos === i);
 
-                // Only show your own units in your territory
-                if (myUnit && canPlaceInCell(i)) {
-                    cell.classList.add('occupied');
-                    cell.classList.remove('player1-zone', 'player2-zone', 'disabled');
-                    
-                    if (selectedBoardUnit && selectedBoardUnit.id === myUnit.id) {
-                        cell.classList.add('selected-unit');
-                    }
-                    
-                    const removeBtn = gameState.phase === 'prep' 
-                        ? `<button class="remove-unit-btn" data-unit-id="${myUnit.id}">✕</button>` 
-                        : '';
-                    
-                    cell.innerHTML = `
-                        ${removeBtn}
-                        <img src="${UNIT_IMAGES[myUnit.icon]}" class="unit" alt="${myUnit.name}">
-                        <div class="unit-name">${myUnit.name}</div>
-                        <div class="unit-hp">HP: ${myUnit.currentHp}/${myUnit.hp}</div>
-                    `;
-                    
-                    if (gameState.phase === 'prep') {
+                    // Only show YOUR units in YOUR territory
+                    if (myUnit && canPlaceInCell(i)) {
+                        cell.classList.add('occupied');
+                        cell.classList.remove('player1-zone', 'player2-zone', 'disabled');
+                        
+                        if (selectedBoardUnit && selectedBoardUnit.id === myUnit.id) {
+                            cell.classList.add('selected-unit');
+                        }
+                        
+                        const removeBtn = `<button class="remove-unit-btn" data-unit-id="${myUnit.id}">✕</button>`;
+                        
+                        cell.innerHTML = `
+                            ${removeBtn}
+                            <img src="${UNIT_IMAGES[myUnit.icon]}" class="unit" alt="${myUnit.name}">
+                            <div class="unit-name">${myUnit.name}</div>
+                            <div class="unit-hp">HP: ${myUnit.currentHp}/${myUnit.hp}</div>
+                        `;
+                        
                         const btn = cell.querySelector('.remove-unit-btn');
                         if (btn) {
                             btn.addEventListener('click', (e) => {
@@ -1521,15 +1520,16 @@
                             });
                         }
                     }
-                } else if (opponentUnit && !canPlaceInCell(i) && gameState.phase === 'prep') {
-                    // Show opponent units in their territory during prep
-                    cell.classList.add('enemy');
-                    cell.classList.remove('player1-zone', 'player2-zone', 'disabled');
-                    cell.innerHTML = `
-                        <img src="${UNIT_IMAGES[opponentUnit.icon]}" class="unit" alt="${opponentUnit.name}">
-                        <div class="unit-name">${opponentUnit.name}</div>
-                        <div class="unit-hp">HP: ${opponentUnit.currentHp}/${opponentUnit.hp}</div>
-                    `;
+                    // Show opponent units in THEIR territory (faded)
+                    else if (opponentUnit && !canPlaceInCell(i)) {
+                        cell.classList.add('enemy');
+                        cell.classList.remove('player1-zone', 'player2-zone', 'disabled');
+                        cell.style.opacity = '0.6';
+                        cell.innerHTML = `
+                            <img src="${UNIT_IMAGES[opponentUnit.icon]}" class="unit" alt="${opponentUnit.name}">
+                            <div class="unit-name">${opponentUnit.name}</div>
+                        `;
+                    }
                 }
             });
         }
