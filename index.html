@@ -677,6 +677,8 @@
                 const data = doc.data();
                 
                 if (data.status === 'active' && data.state) {
+                    const previousPhase = gameState.phase;
+                    const previousRound = gameState.round;
                     gameState = data.state;
                     
                     document.getElementById('player1-name').textContent = 
@@ -684,9 +686,27 @@
                     document.getElementById('player2-name').textContent = 
                         playerNumber === 2 ? 'You' : data.player2Name;
                     
+                    // Clean up on phase transition
+                    if (previousPhase === 'battle' && gameState.phase === 'prep') {
+                        if (battleInterval) {
+                            clearInterval(battleInterval);
+                            battleInterval = null;
+                        }
+                    }
+                    
+                    // Display battle log if in battle phase
+                    if (gameState.phase === 'battle' && gameState.battleLog) {
+                        currentBattleLog = gameState.battleLog;
+                        displayBattleLog();
+                    }
+                    
                     updateGameUI();
                     showScreen('game-screen');
-                    checkPhaseTimer();
+                    
+                    // Only reset timers on round change or phase change
+                    if (previousRound !== gameState.round || previousPhase !== gameState.phase) {
+                        checkPhaseTimer();
+                    }
                 }
             });
         }
@@ -946,11 +966,25 @@
             }
 
             const newUnit = {
-                ...selectedUnit,
+                id: selectedUnit.id + '_' + Date.now(),
+                name: selectedUnit.name,
+                icon: selectedUnit.icon,
+                cost: selectedUnit.cost,
+                hp: selectedUnit.hp,
+                atk: selectedUnit.atk,
+                walkSpeed: selectedUnit.walkSpeed,
+                attackSpeed: selectedUnit.attackSpeed,
+                range: selectedUnit.range,
+                targets: selectedUnit.targets,
+                layer: selectedUnit.layer,
+                splash: selectedUnit.splash || 0,
+                splashType: selectedUnit.splashType || null,
+                deathDamage: selectedUnit.deathDamage || 0,
+                deathSplash: selectedUnit.deathSplash || 0,
+                diesOnAttack: selectedUnit.diesOnAttack || false,
                 pos: index,
                 currentHp: selectedUnit.hp,
-                lastAttackTime: 0,
-                id: selectedUnit.id + '_' + Date.now()
+                lastAttackTime: 0
             };
 
             myBoard.push(newUnit);
@@ -969,10 +1003,15 @@
             gameState[myKey].ready = true;
             await db.collection('games').doc(gameId).update({ state: gameState });
 
+            document.getElementById('waiting-message').style.display = 'block';
+
             if (gameState.player1.ready && gameState.player2.ready) {
-                await simulateBattle();
-            } else {
-                document.getElementById('waiting-message').style.display = 'block';
+                // Only player 1 initiates the battle
+                if (playerNumber === 1) {
+                    setTimeout(() => {
+                        simulateBattle();
+                    }, 500);
+                }
             }
         }
 
@@ -1272,14 +1311,13 @@
                     range: u.range,
                     targets: u.targets,
                     layer: u.layer,
-                    splash: u.splash,
-                    splashType: u.splashType,
-                    deathDamage: u.deathDamage,
-                    deathSplash: u.deathSplash,
-                    diesOnAttack: u.diesOnAttack,
+                    splash: u.splash || 0,
+                    splashType: u.splashType || null,
+                    deathDamage: u.deathDamage || 0,
+                    deathSplash: u.deathSplash || 0,
+                    diesOnAttack: u.diesOnAttack || false,
                     currentHp: u.hp,
-                    pos: flippedPos,
-                    lastAttackTime: 0
+                    pos: flippedPos
                 };
             });
             gameState.player2.board = p2Units.filter(u => u.currentHp > 0).map(u => {
@@ -1454,7 +1492,8 @@
                 const myUnit = gameState[myKey].board.find(u => u.pos === i);
                 const opponentUnit = gameState[opponentKey].board.find(u => u.pos === i);
 
-                if (myUnit) {
+                // Only show your own units in your territory
+                if (myUnit && canPlaceInCell(i)) {
                     cell.classList.add('occupied');
                     cell.classList.remove('player1-zone', 'player2-zone', 'disabled');
                     
@@ -1482,7 +1521,8 @@
                             });
                         }
                     }
-                } else if (opponentUnit) {
+                } else if (opponentUnit && !canPlaceInCell(i) && gameState.phase === 'prep') {
+                    // Show opponent units in their territory during prep
                     cell.classList.add('enemy');
                     cell.classList.remove('player1-zone', 'player2-zone', 'disabled');
                     cell.innerHTML = `
